@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galileo Arena - Mecha Arena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,700;1,700&family=Black+Ops+One&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Black Ops One', 'cursive'],
+                        ui: ['Chakra Petch', 'sans-serif'],
+                    },
+                    colors: {
+                        'p1': '#3b82f6',
+                        'p2': '#ef4444',
+                        'ref': '#22c55e',
+                        'dark-metal': '#111827',
+                    },
+                    backgroundImage: {
+                        'hex-pattern': "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMSI+PHBhdGggZD0iTTEyIDJMMiA3djEwbDEwIDUgMTAtNVY3TDEyIDJ6IiBvcGFjaXR5PSIwLjEiLz48L3N2Zz4=')",
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .skew-box {
+            transform: skewX(-20deg);
+        }
+
+        .unskew {
+            transform: skewX(20deg);
+        }
+
+        .health-fill {
+            transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-white font-ui h-screen overflow-hidden flex flex-col relative bg-hex-pattern">
+
+    <!-- Top HUD (Health Bars) -->
+    <header class="h-24 px-8 pt-4 w-full relative z-20 flex justify-between items-start">
+
+        <!-- P1 Health -->
+        <div class="w-[40%]">
+            <div class="flex justify-between items-end mb-1">
+                <span class="text-3xl font-display text-p1 italic">ORTHODOX</span>
+                <span class="text-xs text-yellow-400 font-bold bg-black px-1 border border-yellow-600">LVL 4.0</span>
+            </div>
+            <div class="h-6 bg-gray-800 border-2 border-slate-600 skew-box relative overflow-hidden">
+                <div class="absolute inset-0 bg-yellow-400/20 w-full animate-pulse"></div>
+                <!-- Health -->
+                <div class="h-full bg-gradient-to-r from-blue-700 to-p1 w-[85%] health-fill border-r-2 border-white">
+                </div>
+            </div>
+        </div>
+
+        <!-- Timer / VS -->
+        <div class="flex flex-col items-center justify-center -mt-2">
+            <div
+                class="w-16 h-16 bg-black border-4 border-slate-500 rounded-lg flex items-center justify-center shadow-lg z-10">
+                <span class="text-4xl font-display text-yellow-400">88</span>
+            </div>
+            <div class="px-3 bg-red-700 font-bold text-xs transform -translate-y-2 border border-red-500">SEC</div>
+        </div>
+
+        <!-- P2 Health -->
+        <div class="w-[40%] text-right">
+            <div class="flex justify-between items-end mb-1 flex-row-reverse">
+                <span class="text-3xl font-display text-p2 italic">HERETIC</span>
+                <span class="text-xs text-yellow-400 font-bold bg-black px-1 border border-yellow-600">LVL 3.5</span>
+            </div>
+            <div class="h-6 bg-gray-800 border-2 border-slate-600 skew-box relative overflow-hidden">
+                <!-- Health (Right aligned) -->
+                <div
+                    class="h-full bg-gradient-to-l from-red-800 to-p2 w-[60%] health-fill border-l-2 border-white float-right">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Battle Stage -->
+    <main class="flex-1 flex relative">
+
+        <!-- P1 Mech (Left) -->
+        <div class="flex-1 flex items-end justify-center pb-12 relative group">
+            <!-- Attack Bubble -->
+            <div
+                class="absolute top-[20%] right-12 max-w-sm bg-blue-900/90 border-2 border-p1 p-4 rounded-tl-2xl rounded-br-2xl skew-box opacity-100 z-10 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                <div class="unskew text-sm leading-snug">
+                    <strong class="text-p1 block mb-1">> CITATION ATTACK</strong>
+                    "Study [E1] confirms 40% loss in context sharing. Your logic fails to account for implicit knowledge
+                    transfer!"
+                </div>
+            </div>
+
+            <!-- Mech Graphic (CSS Shapes) -->
+            <div class="relative w-64 h-80 transition-transform duration-100 group-hover:translate-x-4">
+                <!-- Head -->
+                <div class="absolute top-0 left-16 w-24 h-20 bg-slate-800 border-2 border-p1 clip-path-polygon"></div>
+                <div class="absolute top-6 left-20 w-16 h-4 bg-p1 shadow-[0_0_15px_blue]"></div>
+                <!-- Torso -->
+                <div class="absolute top-20 left-8 w-48 h-40 bg-slate-900 border-2 border-slate-600">
+                    <div class="absolute inset-4 border border-slate-700 bg-stripes"></div>
+                    <div
+                        class="absolute bottom-10 left-16 w-16 h-16 rounded-full bg-blue-900 border-4 border-p1 animate-pulse">
+                    </div>
+                </div>
+                <!-- Arms -->
+                <div class="absolute top-24 -left-8 w-16 h-48 bg-slate-800 border-r-4 border-p1 transform rotate-12">
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Stage (Verdict / Effects) -->
+        <div class="w-24 flex flex-col justify-end items-center pb-20">
+            <!-- Referee Bot -->
+            <div
+                class="w-16 h-20 bg-green-900 border-2 border-ref rounded-lg flex items-center justify-center animate-bounce">
+                <div class="w-12 h-4 bg-black rounded">
+                    <div class="w-full h-full bg-green-500 animate-ping opacity-50"></div>
+                </div>
+            </div>
+            <div
+                class="mt-4 bg-black px-2 py-1 border border-ref text-ref text-[10px] font-bold uppercase whitespace-nowrap">
+                Judge: Watching
+            </div>
+        </div>
+
+        <!-- P2 Mech (Right) -->
+        <div class="flex-1 flex items-end justify-center pb-12 relative group">
+            <!-- Hit Effect -->
+            <div class="absolute top-[30%] left-[20%] z-20">
+                <div
+                    class="text-6xl font-display text-white italic text-stroke-black animate-ping opacity-0 group-hover:opacity-100">
+                    HIT!</div>
+            </div>
+
+            <!-- Mech Graphic (Right) -->
+            <div
+                class="relative w-64 h-80 transform scale-x-[-1] transition-transform duration-100 group-hover:translate-x-[-10px] filter hue-rotate-180 brightness-75 hover:brightness-100">
+                <!-- Head -->
+                <div class="absolute top-0 left-16 w-24 h-20 bg-slate-800 border-2 border-p2 clip-path-polygon"></div>
+                <div class="absolute top-6 left-20 w-16 h-4 bg-p2 shadow-[0_0_15px_red]"></div>
+                <!-- Torso -->
+                <div class="absolute top-20 left-8 w-48 h-40 bg-slate-900 border-2 border-slate-600">
+                    <div class="absolute bottom-10 left-16 w-16 h-16 rounded-full bg-red-900 border-4 border-p2"></div>
+                </div>
+                <!-- Arms -->
+                <div class="absolute top-24 -left-8 w-16 h-48 bg-slate-800 border-r-4 border-p2 transform rotate-12">
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Super Meter (Bottom) -->
+    <footer class="h-16 bg-black border-t-4 border-slate-700 flex">
+        <div class="flex-1 p-2 flex gap-1 items-center">
+            <span class="text-xs font-bold text-p1 mr-2 w-12">SUPER</span>
+            <div class="h-6 flex-1 bg-gray-900 skew-box border border-slate-600 flex gap-1 p-1">
+                <div class="h-full w-1/4 bg-blue-600"></div>
+                <div class="h-full w-1/4 bg-blue-500"></div>
+                <div class="h-full w-1/4 bg-blue-400"></div>
+                <div class="h-full w-0 bg-white animate-pulse"></div>
+            </div>
+        </div>
+        <div class="w-24 bg-slate-800 flex items-center justify-center font-display text-slate-500 skew-box mx-4">
+            LOGS
+        </div>
+        <div class="flex-1 p-2 flex gap-1 items-center flex-row-reverse">
+            <span class="text-xs font-bold text-p2 ml-2 w-12 text-right">SUPER</span>
+            <div class="h-6 flex-1 bg-gray-900 skew-box border border-slate-600 flex gap-1 p-1 flex-row-reverse">
+                <div class="h-full w-1/4 bg-red-600"></div>
+                <div class="h-full w-1/4 bg-red-500"></div>
+                <div class="h-full w-0 bg-red-400"></div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+
+</html>

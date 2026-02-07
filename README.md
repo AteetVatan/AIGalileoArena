@@ -24,7 +24,7 @@ Multi-model agentic debate evaluation platform with live SSE streaming and Postg
 ```bash
 # 1. Clone
 git clone <repo-url>
-cd galileo-arena
+cd AIGalileoArena
 
 # 2. Configure API keys
 cp backend/.env.example backend/.env

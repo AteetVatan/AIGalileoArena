@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galileo Arena - Proposal 12: Cyber Senate</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Share+Tech+Mono&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Share Tech Mono', monospace;
+            color: #FF3333;
+        }
+
+        /* CRT Scanline Effect */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: grid;
+            grid-template-areas:
+                "header header header"
+                "left center right"
+                "footer footer footer";
+            grid-template-rows: 80px 1fr 80px;
+            grid-template-columns: 300px 1fr 300px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        header {
+            grid-area: header;
+            border-bottom: 2px solid #FF3333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(42, 42, 42, 0.8);
+            padding: 0 20px;
+            clip-path: polygon(0 0, 100% 0, 100% 70%, 98% 100%, 0 100%);
+        }
+
+        h1 {
+            font-family: 'Chakra Petch', sans-serif;
+            text-transform: uppercase;
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 5px;
+            text-shadow: 2px 2px 0px #2A2A2A;
+        }
+
+        .system-status {
+            font-size: 0.8rem;
+            color: #00FF00;
+            border: 1px solid #00FF00;
+            padding: 5px 10px;
+        }
+
+        #sidebar-left {
+            grid-area: left;
+            border-right: 2px solid #FF3333;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel {
+            border: 1px solid #FF3333;
+            padding: 10px;
+            background: rgba(255, 51, 51, 0.1);
+        }
+
+        .panel-title {
+            background: #FF3333;
+            color: #000;
+            padding: 2px 5px;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+
+        .log-entry {
+            font-size: 0.7rem;
+            margin-bottom: 5px;
+            opacity: 0.8;
+            border-bottom: 1px dashed #444;
+        }
+
+        button.cyber-btn {
+            background: transparent;
+            border: 2px solid #FFAA00;
+            color: #FFAA00;
+            padding: 15px;
+            font-family: 'Chakra Petch', sans-serif;
+            text-transform: uppercase;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+
+        button.cyber-btn:hover {
+            background: #FFAA00;
+            color: #000;
+        }
+
+        #center-view {
+            grid-area: center;
+            position: relative;
+        }
+
+        /* Verdict overlay */
+        #verdict-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            border: 5px solid #00FF00;
+            background: rgba(0, 20, 0, 0.9);
+            color: #00FF00;
+            padding: 40px;
+            font-size: 4rem;
+            font-family: 'Chakra Petch', sans-serif;
+            text-transform: uppercase;
+            z-index: 1000;
+            transition: transform 0.2s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+            box-shadow: 0 0 50px #00FF00;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="hud">
+        <header>
+            <h1>Proposal 12 // Cyber Senate</h1>
+            <div class="system-status">SYS: ONLINE</div>
+        </header>
+
+        <div id="sidebar-left">
+            <div class="panel">
+                <div class="panel-title">Debate Control</div>
+                <button class="cyber-btn" onclick="initiateSequence()" style="width: 100%">Execute Protocol</button>
+            </div>
+
+            <div class="panel" style="flex-grow: 1; overflow: hidden;">
+                <div class="panel-title">Logic Logs</div>
+                <div id="log-container">
+                    <!-- Logs go here -->
+                </div>
+            </div>
+        </div>
+
+        <div id="center-view">
+            <div id="verdict-display">JUDGMENT FINAL</div>
+        </div>
+
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // --- LOGGER ---
+        function log(msg) {
+            const container = document.getElementById('log-container');
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            div.innerText = `> ${new Date().toLocaleTimeString()} : ${msg}`;
+            container.prepend(div);
+            if (container.children.length > 10) container.lastChild.remove();
+        }
+
+        // --- SCENE ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x000000, 10, 50);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(20, 20, 20);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: false }); // False for rugged look
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // --- ASSETS ---
+
+        // Grid Floor
+        const gridHelper = new THREE.GridHelper(100, 50, 0xFF3333, 0x222222);
+        scene.add(gridHelper);
+
+        // The Core (Judge) - A massive monolith
+        const coreGeo = new THREE.BoxGeometry(4, 15, 4);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0xFF3333, wireframe: true });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        core.position.y = 7.5;
+        scene.add(core);
+
+        // Inner Core Light
+        const lightGeo = new THREE.CylinderGeometry(0.5, 0.5, 20, 8);
+        const lightMat = new THREE.MeshBasicMaterial({ color: 0xFFAA00 });
+        const innerLight = new THREE.Mesh(lightGeo, lightMat);
+        core.add(innerLight);
+
+        // Senators (Robots) - Cubes arranged in a semi-circle
+        const senators = [];
+        const count = 6;
+        const radius = 15;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / (count - 1)) * Math.PI - Math.PI; // Semicircle
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius + 10; // Offset
+
+            const senGeo = new THREE.BoxGeometry(2, 4, 2);
+            const senMat = new THREE.MeshBasicMaterial({
+                color: 0x444444,
+                wireframe: true
+            });
+            const senator = new THREE.Mesh(senGeo, senMat);
+            senator.position.set(x, 2, z);
+
+            // Add "Eye"
+            const eyeGeo = new THREE.BoxGeometry(1.5, 0.2, 0.5);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xFF0000 });
+            const eye = new THREE.Mesh(eyeGeo, eyeMat);
+            eye.position.set(0, 1, 0.8);
+            senator.add(eye);
+
+            senators.push({ mesh: senator, eye: eye, baseY: 2 });
+            scene.add(senator);
+        }
+
+        // Lasers (Data Streams)
+        const lasers = [];
+        const laserMat = new THREE.LineBasicMaterial({ color: 0xFFAA00 });
+
+        senators.forEach(s => {
+            const geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)
+            ]);
+            const line = new THREE.Line(geometry, laserMat);
+            line.visible = false;
+            scene.add(line);
+            lasers.push(line);
+        });
+
+        // --- ANIMATION ---
+
+        let active = false;
+        let frame = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            frame++;
+
+            // Camera float
+            camera.position.x = 20 + Math.sin(frame * 0.005) * 5;
+            camera.lookAt(0, 5, 0);
+
+            // Core Pulse
+            core.rotation.y += 0.01;
+            innerLight.scale.set(1 + Math.sin(frame * 0.1) * 0.5, 1, 1 + Math.sin(frame * 0.1) * 0.5);
+
+            if (active) {
+                // Random laser fire
+                lasers.forEach((laser, i) => {
+                    const senator = senators[i];
+
+                    // Update positions
+                    const positions = laser.geometry.attributes.position.array;
+                    // Start point (senator eye)
+                    positions[0] = senator.mesh.position.x;
+                    positions[1] = senator.mesh.position.y + 1;
+                    positions[2] = senator.mesh.position.z;
+                    // End point (Core)
+                    positions[3] = core.position.x;
+                    positions[4] = core.position.y + (Math.random() * 10 - 5);
+                    positions[5] = core.position.z;
+
+                    laser.geometry.attributes.position.needsUpdate = true;
+
+                    if (Math.random() > 0.8) {
+                        laser.visible = true;
+                        senator.mesh.position.y = 2.5; // Jump
+                        senator.eye.material.color.setHex(0xFFFF00);
+                    } else {
+                        laser.visible = false;
+                        senator.mesh.position.y = 2; // Settle
+                        senator.eye.material.color.setHex(0xFF0000);
+                    }
+                });
+
+                // Camera shake
+                camera.position.y += (Math.random() - 0.5) * 0.2;
+
+            } else {
+                lasers.forEach(l => l.visible = false);
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- LOGIC ---
+
+        function initiateSequence() {
+            if (active) return;
+            active = true;
+            log("PROTOCOL INITIATED");
+            log("SENATORS ENGAGED");
+
+            document.querySelector('.system-status').innerText = "SYS: BUSY";
+            document.querySelector('.system-status').style.color = "#FF0000";
+            document.querySelector('.system-status').style.borderColor = "#FF0000";
+
+            setTimeout(() => { log("ANALYZING ARGUMENTS..."); }, 1000);
+            setTimeout(() => { log("DETECTING LOGIC FAULTS..."); }, 2500);
+            setTimeout(() => { log("CONSENSUS COMPILATION..."); }, 4000);
+
+            setTimeout(() => {
+                active = false;
+                showVerdict();
+            }, 5000);
+        }
+
+        function showVerdict() {
+            const verdict = document.getElementById('verdict-display');
+            verdict.style.transform = "translate(-50%, -50%) scale(1)";
+            log("JUDGMENT RENDERED");
+
+            setTimeout(() => {
+                verdict.style.transform = "translate(-50%, -50%) scale(0)";
+                document.querySelector('.system-status').innerText = "SYS: ONLINE";
+                document.querySelector('.system-status').style.color = "#00FF00";
+                document.querySelector('.system-status').style.borderColor = "#00FF00";
+            }, 3000);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+
+</body>
+
+</html>
