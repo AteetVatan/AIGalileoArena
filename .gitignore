@@ -15,6 +15,7 @@ out/
 # IDE
 .vscode/
 .idea/
+.cursor/
 *.swp
 
 # OS
@@ -26,3 +27,5 @@ pgdata/
 
 # Misc
 *.log
+SETUP.md
+

@@ -17,3 +17,4 @@ python-dotenv>=1.0
 pytest>=8.0
 pytest-asyncio>=0.23
 tomli-w>=1.0
+debugpy>=1.8

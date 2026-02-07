@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -9,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
-from app.core.domain.schemas import RunRequest
+from app.core.domain.schemas import RunRequest, RunStatus
 from app.infra.db.repository import Repository
 from app.infra.sse.event_bus import event_bus
 from app.usecases.compute_summary import compute_run_summary
@@ -37,14 +38,31 @@ async def create_run(
     # We need a fresh session for the background task
     from app.infra.db.session import async_session_factory
 
+    bg_logger = logging.getLogger(__name__)
+
     async def _run():
-        async with async_session_factory() as bg_session:
-            uc = RunEvalUsecase(bg_session, event_bus)
-            await uc.execute(
-                dataset_id=body.dataset_id,
-                models=models,
-                max_cases=body.max_cases,
+        """Background task wrapper for evaluation run."""
+        bg_logger.info(
+            "Background task started: dataset_id=%s, models=%s, max_cases=%s",
+            body.dataset_id,
+            [m.get("model_name") for m in models],
+            body.max_cases,
+        )
+        try:
+            async with async_session_factory() as bg_session:
+                uc = RunEvalUsecase(bg_session, event_bus)
+                run_id = await uc.execute(
+                    dataset_id=body.dataset_id,
+                    models=models,
+                    max_cases=body.max_cases,
+                )
+                bg_logger.info("Background task completed: run_id=%s", run_id)
+        except Exception as exc:
+            bg_logger.exception(
+                "Background task failed: dataset_id=%s, error=%s",
+                body.dataset_id, exc,
             )
+            raise
 
     # create the run record synchronously so we can return the id
     import uuid
@@ -53,7 +71,7 @@ async def create_run(
     # Actually let the usecase create it; we'll get the id back
     background_tasks.add_task(_run)
 
-    return {"run_id": "starting", "status": "PENDING", "message": "Run queued"}
+    return {"run_id": "starting", "status": RunStatus.PENDING.value, "message": "Run queued"}
 
 
 @router.post("/start")
@@ -82,7 +100,7 @@ async def start_run_sync(
     # Give it a moment to create the run record
     await asyncio.sleep(0.2)
 
-    return {"status": "RUNNING", "message": "Run started in background"}
+    return {"status": RunStatus.RUNNING.value, "message": "Run started in background"}
 
 
 @router.get("/{run_id}")

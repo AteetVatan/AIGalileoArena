@@ -12,6 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.domain.schemas import DebateRole, VerdictEnum
+
 
 # ── Phase Enum ────────────────────────────────────────────────────────────────
 
@@ -25,9 +27,35 @@ class DebatePhase(str, Enum):
     JUDGE = "judge"
 
 
+class AdmissionLevel(str, Enum):
+    NONE = "none"
+    INSUFFICIENT = "insufficient"
+    UNCERTAIN = "uncertain"
+
+
+class DebateTarget(str, Enum):
+    HERETIC = DebateRole.HERETIC.value
+    ORTHODOX = DebateRole.ORTHODOX.value
+    BOTH = "Both"
+
+
+class LogMessageType(str, Enum):
+    QUESTIONS = "questions"
+    ANSWERS = "answers"
+
+
+# ── Keep Literals for Pydantic field validation (backed by enums) ─────────
+
 VERDICT_LITERAL = Literal["SUPPORTED", "REFUTED", "INSUFFICIENT"]
 ADMISSION_LITERAL = Literal["none", "insufficient", "uncertain"]
 TARGET_LITERAL = Literal["Heretic", "Orthodox", "Both"]
+
+
+# ── Fallback message constants ────────────────────────────────────────────
+
+FALLBACK_QUESTION = "Unable to generate question"
+FALLBACK_ANSWER = "Unable to generate answer"
+FALLBACK_JUDGE_REASONING = "Failed to parse judge output"
 
 
 # ── Phase 1: Independent Proposals ───────────────────────────────────────────
@@ -66,7 +94,7 @@ class Answer(BaseModel):
     q: str
     a: str
     evidence_refs: list[str] = Field(default_factory=list)
-    admission: ADMISSION_LITERAL = "none"
+    admission: ADMISSION_LITERAL = AdmissionLevel.NONE
 
 
 class AnswersMessage(BaseModel):
@@ -110,7 +138,7 @@ class DisputeAnswer(BaseModel):
     q: str
     a: str
     evidence_refs: list[str] = Field(default_factory=list)
-    admission: ADMISSION_LITERAL = "none"
+    admission: ADMISSION_LITERAL = AdmissionLevel.NONE
 
 
 class DisputeAnswersMessage(BaseModel):

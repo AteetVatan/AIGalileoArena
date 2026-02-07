@@ -49,6 +49,19 @@ class DebateRole(str, Enum):
     JUDGE = "Judge"
 
 
+class LLMProvider(str, Enum):
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    MISTRAL = "mistral"
+    DEEPSEEK = "deepseek"
+    GEMINI = "gemini"
+    GROK = "grok"
+
+
+class RunMode(str, Enum):
+    DEBATE = "debate"
+
+
 # ── Evidence & Dataset ───────────────────────────────────────────────────────
 
 
@@ -92,7 +105,7 @@ class RunRequest(BaseModel):
     dataset_id: str
     models: list[ModelConfig]
     max_cases: Optional[int] = None
-    mode: str = "debate"
+    mode: str = RunMode.DEBATE
 
 
 class RunResponse(BaseModel):

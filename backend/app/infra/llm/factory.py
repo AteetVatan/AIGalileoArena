@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.core.domain.schemas import LLMProvider
 
 from .anthropic_client import AnthropicClient
 from .base import BaseLLMClient
@@ -13,21 +14,21 @@ from .mistral_client import MistralClient
 from .openai_client import OpenAIClient
 
 _PROVIDERS: dict[str, type] = {
-    "openai": OpenAIClient,
-    "anthropic": AnthropicClient,
-    "mistral": MistralClient,
-    "deepseek": DeepSeekClient,
-    "gemini": GeminiClient,
-    "grok": GrokClient,
+    LLMProvider.OPENAI: OpenAIClient,
+    LLMProvider.ANTHROPIC: AnthropicClient,
+    LLMProvider.MISTRAL: MistralClient,
+    LLMProvider.DEEPSEEK: DeepSeekClient,
+    LLMProvider.GEMINI: GeminiClient,
+    LLMProvider.GROK: GrokClient,
 }
 
 _KEY_MAP: dict[str, str] = {
-    "openai": "openai_api_key",
-    "anthropic": "anthropic_api_key",
-    "mistral": "mistral_api_key",
-    "deepseek": "deepseek_api_key",
-    "gemini": "gemini_api_key",
-    "grok": "grok_api_key",
+    LLMProvider.OPENAI: "openai_api_key",
+    LLMProvider.ANTHROPIC: "anthropic_api_key",
+    LLMProvider.MISTRAL: "mistral_api_key",
+    LLMProvider.DEEPSEEK: "deepseek_api_key",
+    LLMProvider.GEMINI: "gemini_api_key",
+    LLMProvider.GROK: "grok_api_key",
 }
 
 

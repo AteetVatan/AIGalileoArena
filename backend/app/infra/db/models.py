@@ -18,6 +18,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from app.core.domain.schemas import RunStatus
+
 
 class Base(DeclarativeBase):
     pass
@@ -79,7 +81,7 @@ class RunRow(Base):
     dataset_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("datasets.id"), nullable=False
     )
-    status: Mapped[str] = mapped_column(String(32), default="PENDING")
+    status: Mapped[str] = mapped_column(String(32), default=RunStatus.PENDING)
     models_json: Mapped[list] = mapped_column(JSON, nullable=False)
     max_cases: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -115,7 +117,7 @@ class RunCaseStatusRow(Base):
     )
     case_id: Mapped[str] = mapped_column(String(128), nullable=False)
     model_key: Mapped[str] = mapped_column(String(128), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), default="PENDING")
+    status: Mapped[str] = mapped_column(String(32), default=RunStatus.PENDING)
     started_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True
     )

@@ -9,11 +9,17 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.domain.schemas import JudgeDecision, VerdictEnum
+from app.core.domain.schemas import (
+    CaseStatus,
+    EventType,
+    JudgeDecision,
+    RunStatus,
+    VerdictEnum,
+)
 from app.core.domain.scoring import compute_case_score
 from app.infra.db.repository import Repository
 from app.infra.debate.runner import DebateController
-from app.infra.debate.schemas import MessageEvent, PhaseEvent
+from app.infra.debate.schemas import FALLBACK_JUDGE_REASONING, MessageEvent, PhaseEvent
 from app.infra.llm.factory import get_llm_client
 from app.infra.sse.event_bus import EventBus
 
@@ -52,10 +58,10 @@ class RunEvalUsecase:
             models_json=models_json,
             max_cases=max_cases,
         )
-        await self._repo.update_run_status(run_id, status="RUNNING")
+        await self._repo.update_run_status(run_id, status=RunStatus.RUNNING)
         await self._repo.commit()
 
-        await self._emit(run_id, "run_started", {
+        await self._emit(run_id, EventType.RUN_STARTED, {
             "run_id": run_id,
             "dataset_id": dataset_id,
             "models": models_json,
@@ -67,7 +73,7 @@ class RunEvalUsecase:
                 cases = cases[:max_cases]
 
             for case_idx, case_row in enumerate(cases):
-                await self._emit(run_id, "case_started", {
+                await self._emit(run_id, EventType.CASE_STARTED, {
                     "case_id": case_row.case_id,
                     "case_index": case_idx,
                     "total_cases": len(cases),
@@ -88,24 +94,24 @@ class RunEvalUsecase:
                     )
 
                 # emit progress
-                await self._emit(run_id, "metrics_update", {
+                await self._emit(run_id, EventType.METRICS_UPDATE, {
                     "completed": case_idx + 1,
                     "total": len(cases),
                 })
 
             await self._repo.update_run_status(
-                run_id, status="COMPLETED", finished_at=datetime.utcnow()
+                run_id, status=RunStatus.COMPLETED, finished_at=datetime.utcnow()
             )
             await self._repo.commit()
-            await self._emit(run_id, "run_finished", {"run_id": run_id})
+            await self._emit(run_id, EventType.RUN_FINISHED, {"run_id": run_id})
 
         except Exception as exc:
             logger.exception("Run %s failed", run_id)
             await self._repo.update_run_status(
-                run_id, status="FAILED", finished_at=datetime.utcnow()
+                run_id, status=RunStatus.FAILED, finished_at=datetime.utcnow()
             )
             await self._repo.commit()
-            await self._emit(run_id, "run_finished", {
+            await self._emit(run_id, EventType.RUN_FINISHED, {
                 "run_id": run_id, "error": str(exc),
             })
 
@@ -126,7 +132,7 @@ class RunEvalUsecase:
             run_id=run_id,
             case_id=case_row.case_id,
             model_key=model_key,
-            status="RUNNING",
+            status=CaseStatus.RUNNING,
             started_at=datetime.utcnow(),
         )
         await self._repo.commit()
@@ -150,7 +156,7 @@ class RunEvalUsecase:
                     round=evt.round,
                 )
                 await self._repo.commit()
-                await self._emit(run_id, "agent_message", {
+                await self._emit(run_id, EventType.AGENT_MESSAGE, {
                     "case_id": evt.case_id,
                     "model_key": model_key,
                     "role": evt.role,
@@ -160,7 +166,7 @@ class RunEvalUsecase:
                 })
 
             async def on_phase(evt: PhaseEvent) -> None:
-                await self._emit(run_id, "case_phase_started", {
+                await self._emit(run_id, EventType.CASE_PHASE_STARTED, {
                     "case_id": evt.case_id,
                     "model_key": model_key,
                     "phase": evt.phase,
@@ -184,7 +190,7 @@ class RunEvalUsecase:
                     verdict=VerdictEnum.INSUFFICIENT,
                     confidence=0.0,
                     evidence_used=[],
-                    reasoning="Failed to parse judge output",
+                    reasoning=FALLBACK_JUDGE_REASONING,
                 )
 
             breakdown = compute_case_score(
@@ -210,7 +216,7 @@ class RunEvalUsecase:
             )
             await self._repo.commit()
 
-            await self._emit(run_id, "case_scored", {
+            await self._emit(run_id, EventType.CASE_SCORED, {
                 "case_id": case_row.case_id,
                 "model_key": model_key,
                 "score": breakdown.total,
@@ -228,7 +234,7 @@ class RunEvalUsecase:
                 run_id=run_id,
                 case_id=case_row.case_id,
                 model_key=model_key,
-                verdict="INSUFFICIENT",
+                verdict=VerdictEnum.INSUFFICIENT.value,
                 label=case_row.label,
                 passed=False,
                 score=0,
@@ -246,7 +252,7 @@ class RunEvalUsecase:
                 run_id=run_id,
                 case_id=case_row.case_id,
                 model_key=model_key,
-                status="COMPLETED",
+                status=CaseStatus.COMPLETED,
                 finished_at=datetime.utcnow(),
             )
             await self._repo.commit()

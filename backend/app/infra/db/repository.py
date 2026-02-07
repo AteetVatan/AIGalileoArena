@@ -9,6 +9,8 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.domain.schemas import RunStatus
+
 from .models import (
     DatasetCaseRow,
     DatasetRow,
@@ -74,9 +76,13 @@ class Repository:
         await self._s.flush()
 
     async def list_datasets(self) -> list[DatasetRow]:
-        stmt = select(DatasetRow).order_by(DatasetRow.created_at.desc())
+        stmt = (
+            select(DatasetRow)
+            .order_by(DatasetRow.created_at.desc())
+            .options(selectinload(DatasetRow.cases))
+        )
         result = await self._s.execute(stmt)
-        return list(result.scalars().all())
+        return list(result.unique().scalars().all())
 
     async def get_dataset(self, dataset_id: str) -> Optional[DatasetRow]:
         stmt = (
@@ -111,7 +117,7 @@ class Repository:
             dataset_id=dataset_id,
             models_json=models_json,
             max_cases=max_cases,
-            status="PENDING",
+            status=RunStatus.PENDING,
         )
         self._s.add(row)
         await self._s.flush()

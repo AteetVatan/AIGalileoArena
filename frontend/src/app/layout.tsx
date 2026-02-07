@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <nav className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-3 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <Link href="/" className="text-xl font-bold tracking-tight text-cyan-400 hover:text-cyan-300">

@@ -20,6 +20,7 @@ from typing import Any, Callable, Optional, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from app.core.domain.schemas import DebateRole, VerdictEnum
 from app.infra.llm.base import BaseLLMClient
 
 from .prompts import (
@@ -37,10 +38,16 @@ from .prompts import (
     toml_retry_suffix,
 )
 from .schemas import (
+    AdmissionLevel,
     AnswersMessage,
     DebatePhase,
+    DebateTarget,
     DisputeAnswersMessage,
     DisputeQuestionsMessage,
+    FALLBACK_ANSWER,
+    FALLBACK_JUDGE_REASONING,
+    FALLBACK_QUESTION,
+    LogMessageType,
     MessageEvent,
     PhaseEvent,
     Proposal,
@@ -183,6 +190,13 @@ class DebateController:
         )
 
         result.total_latency_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "Debate completed for case_id=%s, model=%s: total_cost=%.6f, latency_ms=%d",
+            case_id,
+            self._model_key,
+            result.total_cost,
+            result.total_latency_ms,
+        )
         return result
 
     # ── Phase 1: Independent Proposals ───────────────────────────────────
@@ -196,7 +210,7 @@ class DebateController:
         on_message: Optional[OnMessageCallback],
     ) -> dict[str, Proposal]:
         """3 parallel independent proposals."""
-        roles = ["Orthodox", "Heretic", "Skeptic"]
+        roles = [DebateRole.ORTHODOX, DebateRole.HERETIC, DebateRole.SKEPTIC]
 
         async def _get_proposal(role: str) -> tuple[str, Proposal, float]:
             prompt = proposal_prompt(role=role, case_packet=case_pkt)
@@ -245,53 +259,59 @@ class DebateController:
         memo_text = memo.to_context_str()
 
         # TOML for prompt injection
-        o_toml = _model_to_toml(proposals["Orthodox"])
-        h_toml = _model_to_toml(proposals["Heretic"])
-        s_toml = _model_to_toml(proposals["Skeptic"])
+        o_toml = _model_to_toml(proposals[DebateRole.ORTHODOX])
+        h_toml = _model_to_toml(proposals[DebateRole.HERETIC])
+        s_toml = _model_to_toml(proposals[DebateRole.SKEPTIC])
 
         step = 0
+        _O = DebateRole.ORTHODOX.value
+        _H = DebateRole.HERETIC.value
+        _S = DebateRole.SKEPTIC.value
+        _BOTH = DebateTarget.BOTH.value
+        _Q = LogMessageType.QUESTIONS.value
+        _A = LogMessageType.ANSWERS.value
 
         # 2A: Orthodox asks Heretic
         step += 1
         q_oh = await self._cross_exam_step(
             case_id=case_id, case_pkt=case_pkt,
-            asker="Orthodox", target="Heretic",
+            asker=_O, target=_H,
             asker_toml=o_toml, target_toml=h_toml,
             memo_text=memo_text, result=result,
             on_message=on_message, step=step,
         )
-        log.append({"from": "Orthodox", "to": "Heretic", "type": "questions", "data": q_oh})
+        log.append({"from": _O, "to": _H, "type": _Q, "data": q_oh})
 
         # 2B: Heretic answers
         step += 1
         a_ho = await self._answer_step(
             case_id=case_id, case_pkt=case_pkt,
-            answerer="Heretic", questions_toml=q_oh,
+            answerer=_H, questions_toml=q_oh,
             own_toml=h_toml, memo_text=memo_text,
             result=result, on_message=on_message, step=step,
         )
-        log.append({"from": "Heretic", "to": "Orthodox", "type": "answers", "data": a_ho})
+        log.append({"from": _H, "to": _O, "type": _A, "data": a_ho})
 
         # 2C: Heretic asks Orthodox
         step += 1
         q_ho = await self._cross_exam_step(
             case_id=case_id, case_pkt=case_pkt,
-            asker="Heretic", target="Orthodox",
+            asker=_H, target=_O,
             asker_toml=h_toml, target_toml=o_toml,
             memo_text=memo_text, result=result,
             on_message=on_message, step=step,
         )
-        log.append({"from": "Heretic", "to": "Orthodox", "type": "questions", "data": q_ho})
+        log.append({"from": _H, "to": _O, "type": _Q, "data": q_ho})
 
         # 2D: Orthodox answers
         step += 1
         a_oh = await self._answer_step(
             case_id=case_id, case_pkt=case_pkt,
-            answerer="Orthodox", questions_toml=q_ho,
+            answerer=_O, questions_toml=q_ho,
             own_toml=o_toml, memo_text=memo_text,
             result=result, on_message=on_message, step=step,
         )
-        log.append({"from": "Orthodox", "to": "Heretic", "type": "answers", "data": a_oh})
+        log.append({"from": _O, "to": _H, "type": _A, "data": a_oh})
 
         # 2E: Skeptic asks Both
         step += 1
@@ -301,27 +321,27 @@ class DebateController:
             memo_text=memo_text, result=result,
             on_message=on_message, step=step,
         )
-        log.append({"from": "Skeptic", "to": "Both", "type": "questions", "data": q_sk})
+        log.append({"from": _S, "to": _BOTH, "type": _Q, "data": q_sk})
 
         # 2F: Orthodox answers Skeptic
         step += 1
         a_os = await self._answer_step(
             case_id=case_id, case_pkt=case_pkt,
-            answerer="Orthodox", questions_toml=q_sk,
+            answerer=_O, questions_toml=q_sk,
             own_toml=o_toml, memo_text=memo_text,
             result=result, on_message=on_message, step=step,
         )
-        log.append({"from": "Orthodox", "to": "Skeptic", "type": "answers", "data": a_os})
+        log.append({"from": _O, "to": _S, "type": _A, "data": a_os})
 
         # 2G: Heretic answers Skeptic
         step += 1
         a_hs = await self._answer_step(
             case_id=case_id, case_pkt=case_pkt,
-            answerer="Heretic", questions_toml=q_sk,
+            answerer=_H, questions_toml=q_sk,
             own_toml=h_toml, memo_text=memo_text,
             result=result, on_message=on_message, step=step,
         )
-        log.append({"from": "Heretic", "to": "Skeptic", "type": "answers", "data": a_hs})
+        log.append({"from": _H, "to": _S, "type": _A, "data": a_hs})
 
         return log
 
@@ -389,10 +409,10 @@ class DebateController:
         raw_json = parsed.model_dump_json()
         result.total_cost += cost
         result.messages.append(
-            DebateMessage("Skeptic", raw_json, DebatePhase.CROSS_EXAM, step),
+            DebateMessage(DebateRole.SKEPTIC, raw_json, DebatePhase.CROSS_EXAM, step),
         )
         await self._emit_msg(
-            on_message, case_id, "Skeptic", raw_json,
+            on_message, case_id, DebateRole.SKEPTIC, raw_json,
             DebatePhase.CROSS_EXAM, step,
         )
         return _model_to_toml(parsed)
@@ -452,7 +472,7 @@ class DebateController:
 
         revisions: dict[str, Revision] = {}
 
-        for idx, role in enumerate(["Orthodox", "Heretic", "Skeptic"], 1):
+        for idx, role in enumerate([DebateRole.ORTHODOX, DebateRole.HERETIC, DebateRole.SKEPTIC], 1):
             prompt = revision_prompt(
                 role=role,
                 case_packet=case_pkt,
@@ -511,15 +531,15 @@ class DebateController:
         q_toml = _model_to_toml(q_parsed)
         result.total_cost += cost_q
         result.messages.append(
-            DebateMessage("Skeptic", q_json, DebatePhase.DISPUTE, 1),
+            DebateMessage(DebateRole.SKEPTIC, q_json, DebatePhase.DISPUTE, 1),
         )
         await self._emit_msg(
-            on_message, case_id, "Skeptic", q_json,
+            on_message, case_id, DebateRole.SKEPTIC, q_json,
             DebatePhase.DISPUTE, 1,
         )
 
         # Orthodox + Heretic answer
-        for step, role in enumerate(["Orthodox", "Heretic"], 2):
+        for step, role in enumerate([DebateRole.ORTHODOX, DebateRole.HERETIC], 2):
             prompt_a = dispute_answer_prompt(
                 answerer=role,
                 case_packet=case_pkt,
@@ -576,10 +596,10 @@ class DebateController:
         )
         result.total_cost += judge_resp.cost_estimate
         result.messages.append(
-            DebateMessage("Judge", judge_resp.text, DebatePhase.JUDGE, 1),
+            DebateMessage(DebateRole.JUDGE, judge_resp.text, DebatePhase.JUDGE, 1),
         )
         await self._emit_msg(
-            on_message, case_id, "Judge", judge_resp.text,
+            on_message, case_id, DebateRole.JUDGE, judge_resp.text,
             DebatePhase.JUDGE, 1,
         )
 
@@ -605,10 +625,10 @@ class DebateController:
                 return True
 
         # Skeptic + one side agree, dissenter has only uncertainties
-        skeptic_v = verdicts.get("Skeptic")
+        skeptic_v = verdicts.get(DebateRole.SKEPTIC)
         for ally, dissenter in [
-            ("Orthodox", "Heretic"),
-            ("Heretic", "Orthodox"),
+            (DebateRole.ORTHODOX, DebateRole.HERETIC),
+            (DebateRole.HERETIC, DebateRole.ORTHODOX),
         ]:
             if verdicts.get(ally) == skeptic_v and verdicts.get(dissenter) != skeptic_v:
                 d_rev = revisions[dissenter]
@@ -792,29 +812,33 @@ def _try_parse(raw: str, schema_cls: type[T]) -> Optional[T]:
 
 def _build_fallback(schema_cls: type[T]) -> T:
     """Build a safe fallback instance for any debate schema."""
+    _insuf = VerdictEnum.INSUFFICIENT.value
+    _both = DebateTarget.BOTH.value
+    _adm_insuf = AdmissionLevel.INSUFFICIENT.value
+
     if schema_cls is Proposal:
         return schema_cls.model_validate({  # type: ignore[return-value]
-            "proposed_verdict": "INSUFFICIENT",
+            "proposed_verdict": _insuf,
             "evidence_used": [],
-            "key_points": ["Failed to parse agent output"],
+            "key_points": [FALLBACK_JUDGE_REASONING],
             "uncertainties": [],
             "what_would_change_my_mind": [],
         })
     if schema_cls is QuestionsMessage:
         return schema_cls.model_validate({  # type: ignore[return-value]
             "questions": [
-                {"to": "Both", "q": "Unable to generate question", "evidence_refs": []},
+                {"to": _both, "q": FALLBACK_QUESTION, "evidence_refs": []},
             ],
         })
     if schema_cls is AnswersMessage:
         return schema_cls.model_validate({  # type: ignore[return-value]
             "answers": [
-                {"q": "?", "a": "Unable to generate answer", "evidence_refs": [], "admission": "insufficient"},
+                {"q": "?", "a": FALLBACK_ANSWER, "evidence_refs": [], "admission": _adm_insuf},
             ],
         })
     if schema_cls is Revision:
         return schema_cls.model_validate({  # type: ignore[return-value]
-            "final_proposed_verdict": "INSUFFICIENT",
+            "final_proposed_verdict": _insuf,
             "evidence_used": [],
             "what_i_changed": [],
             "remaining_disagreements": [],
@@ -823,13 +847,13 @@ def _build_fallback(schema_cls: type[T]) -> T:
     if schema_cls is DisputeQuestionsMessage:
         return schema_cls.model_validate({  # type: ignore[return-value]
             "questions": [
-                {"q": "Unable to generate question", "evidence_refs": []},
+                {"q": FALLBACK_QUESTION, "evidence_refs": []},
             ],
         })
     if schema_cls is DisputeAnswersMessage:
         return schema_cls.model_validate({  # type: ignore[return-value]
             "answers": [
-                {"q": "?", "a": "Unable to generate answer", "evidence_refs": [], "admission": "insufficient"},
+                {"q": "?", "a": FALLBACK_ANSWER, "evidence_refs": [], "admission": _adm_insuf},
             ],
         })
     # Generic last resort – should not be reached
@@ -861,10 +885,10 @@ def _parse_judge_output(text: str) -> dict[str, Any]:
 def _fallback_judge() -> dict[str, Any]:
     """Fallback when judge output is unparseable."""
     return {
-        "verdict": "INSUFFICIENT",
+        "verdict": VerdictEnum.INSUFFICIENT.value,
         "confidence": 0.0,
         "evidence_used": [],
-        "reasoning": "Failed to parse judge output",
+        "reasoning": FALLBACK_JUDGE_REASONING,
     }
 
 

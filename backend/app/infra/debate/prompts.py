@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.domain.schemas import DebateRole
+
 from .toml_serde import dict_to_toml
 
 
@@ -58,15 +60,15 @@ uncertainties = ["..."]
 what_would_change_my_mind = ["..."]"""
 
 _ROLE_INSTRUCTIONS: dict[str, str] = {
-    "Orthodox": (
+    DebateRole.ORTHODOX: (
         "Steelman the MAJORITY interpretation supporting this claim. "
         "Argue FOR the claim using cited evidence."
     ),
-    "Heretic": (
+    DebateRole.HERETIC: (
         "Steelman the MINORITY / opposing interpretation. "
         "Argue AGAINST or challenge the claim using cited evidence."
     ),
-    "Skeptic": (
+    DebateRole.SKEPTIC: (
         "Rigorously question BOTH sides. "
         "Identify gaps, unsupported assumptions, and contradictions."
     ),

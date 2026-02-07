@@ -12,11 +12,18 @@ from app.api.routes.datasets import router as datasets_router
 from app.api.routes.runs import router as runs_router
 from app.config import settings
 from app.infra.db.session import init_db
+from app.infra.logging_config import ShortPathFormatter, configure_logging
 
-logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper(), logging.INFO),
-    format="%(asctime)s %(levelname)-8s [%(name)s] %(message)s",
+# Configure logging with custom formatter to shorten paths
+formatter = ShortPathFormatter(
+    "%(asctime)s %(levelname)-8s [%(name)s] %(message)s"
 )
+configure_logging(formatter)
+
+# Set log level from settings
+root_logger = logging.getLogger()
+root_logger.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+
 logger = logging.getLogger(__name__)
 
 
