@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galileo Arena - Proposal 14: Data Tribunal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0d0d0d;
+            font-family: 'VT323', monospace;
+            color: #00FF41;
+        }
+
+        #terminal-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            padding: 20px;
+            box-sizing: border-box;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0;
+            text-shadow: 0 0 10px #00FF41;
+        }
+
+        .status-line {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        #code-block {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            height: 200px;
+            overflow: hidden;
+            font-size: 0.8rem;
+            line-height: 1.2;
+            opacity: 0.7;
+            border-left: 2px solid #003B00;
+            padding-left: 10px;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            pointer-events: auto;
+            text-align: right;
+        }
+
+        button.cmd-btn {
+            background: #003B00;
+            border: 1px solid #00FF41;
+            color: #00FF41;
+            padding: 10px 20px;
+            font-family: 'VT323', monospace;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-left: 10px;
+        }
+
+        button.cmd-btn:hover {
+            background: #00FF41;
+            color: #000;
+            box-shadow: 0 0 20px #00FF41;
+        }
+
+        #judge-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+        }
+
+        .glitch-text {
+            font-size: 5rem;
+            color: #fff;
+            text-shadow: 2px 2px #FF0000, -2px -2px #0000FF;
+            animation: glitch 0.5s infinite;
+        }
+
+        @keyframes glitch {
+            0% {
+                transform: translate(0);
+            }
+
+            20% {
+                transform: translate(-2px, 2px);
+            }
+
+            40% {
+                transform: translate(-2px, -2px);
+            }
+
+            60% {
+                transform: translate(2px, 2px);
+            }
+
+            80% {
+                transform: translate(2px, -2px);
+            }
+
+            100% {
+                transform: translate(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="terminal-ui">
+        <h1>> DATA_TRIBUNAL_SYSTEM</h1>
+        <div class="status-line" id="status">STATUS: MONITORING STREAM</div>
+
+        <div id="code-block">
+            Initializing connection...<br>
+            Handshake active.<br>
+            Stream integrity: 98%<br>
+            Awaiting input...
+        </div>
+
+        <div id="judge-overlay">
+            <div class="glitch-text">ACCESS GRANTED</div>
+        </div>
+
+        <div id="controls">
+            <button class="cmd-btn" onclick="runScan()">/EXECUTE_SCAN</button>
+            <button class="cmd-btn" onclick="judge()">/REQUEST_VERDICT</button>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // --- THREE JS SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0D0D0D);
+        scene.fog = new THREE.FogExp2(0x0D0D0D, 0.005);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+        camera.position.z = 50;
+        camera.position.y = 10;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // --- MATRIX RAIN TEXTURE GEN ---
+        function createMatrixTexture() {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, size, size);
+
+            // We'll update this texture every frame? No, too slow.
+            // Let's create a static texture of characters
+            ctx.fillStyle = '#00FF41';
+            ctx.font = '40px monospace';
+            const chars = "XYZ0101<>?{}";
+            for (let i = 0; i < 400; i++) {
+                ctx.fillText(chars.charAt(Math.floor(Math.random() * chars.length)),
+                    Math.random() * size, Math.random() * size);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            return tex;
+        }
+
+        // --- OBJECTS ---
+
+        // 1. Data Columns (Robots)
+        const geometry = new THREE.BoxGeometry(2, 60, 2);
+        const columns = [];
+
+        for (let i = 0; i < 20; i++) {
+            const mat = new THREE.MeshBasicMaterial({
+                color: 0x00FF41,
+                transparent: true,
+                opacity: 0.3,
+                wireframe: true
+            });
+            const col = new THREE.Mesh(geometry, mat);
+            col.position.x = (Math.random() - 0.5) * 100;
+            col.position.z = (Math.random() - 0.5) * 60;
+            col.position.y = 0;
+            col.userData = { speed: Math.random() * 0.2 + 0.1 };
+            scene.add(col);
+            columns.push(col);
+        }
+
+        // 2. The Overseer (Center) - Point Cloud Sphere
+        const sphereGeo = new THREE.SphereGeometry(10, 64, 64);
+        const sphereMat = new THREE.PointsMaterial({ color: 0xFFFFFF, size: 0.2 });
+        const overseer = new THREE.Points(sphereGeo, sphereMat);
+        overseer.position.set(0, 10, -20);
+        scene.add(overseer);
+
+        // 3. Falling Code Particles
+        const partGeo = new THREE.BufferGeometry();
+        const partCount = 5000;
+        const posArray = new Float32Array(partCount * 3);
+        for (let i = 0; i < partCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 200;
+        }
+        partGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const partMat = new THREE.PointsMaterial({
+            size: 0.5,
+            color: 0x00FF41,
+            transparent: true,
+            opacity: 0.6
+        });
+        const particles = new THREE.Points(partGeo, partMat);
+        scene.add(particles);
+
+        // --- ANIMATION ---
+
+        let time = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.05;
+
+            // Rotate Overseer
+            overseer.rotation.y += 0.002;
+            overseer.rotation.z += 0.001;
+
+            // Move columns (up/down)
+            columns.forEach((col, i) => {
+                col.position.y = Math.sin(time * 0.5 + i) * 5;
+                col.rotation.y += 0.01;
+            });
+
+            // Move particles (rain down)
+            const positions = particles.geometry.attributes.position.array;
+            for (let i = 1; i < partCount * 3; i += 3) {
+                positions[i] -= 0.5;
+                if (positions[i] < -50) {
+                    positions[i] = 50;
+                }
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+
+            // Camera subtle move
+            camera.position.x = Math.sin(time * 0.1) * 5;
+            camera.lookAt(0, 0, -20);
+
+            // Flicker effect on Overseer if "Talking"
+            if (Math.random() > 0.95) {
+                overseer.material.size = 0.3;
+            } else {
+                overseer.material.size = 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- LOGIC ---
+        function typeLog(text) {
+            const block = document.getElementById('code-block');
+            block.innerHTML += text + "<br>";
+            block.scrollTop = block.scrollHeight;
+        }
+
+        function runScan() {
+            typeLog("> SCANNING ALL NODES...");
+            columns.forEach(c => c.material.color.setHex(0xFFFFFF)); // Flash
+            setTimeout(() => {
+                columns.forEach(c => c.material.color.setHex(0x00FF41)); // Reset
+                typeLog("> SCAN COMPLETE. ANOMALIES: 0");
+            }, 500);
+        }
+
+        function judge() {
+            typeLog("> REQUESTING VERDICT...");
+            document.getElementById('judge-overlay').style.display = 'block';
+            overseer.material.color.setHex(0xFF0000);
+
+            setTimeout(() => {
+                document.getElementById('judge-overlay').style.display = 'none';
+                overseer.material.color.setHex(0xFFFFFF);
+                typeLog("> VERDICT: APPROVED");
+            }, 2000);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+
+</html>

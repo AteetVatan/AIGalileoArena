@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galileo Arena - Constructivist</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Rubik:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bg: '#e7e5e4',
+                        red: '#dc2626',
+                        black: '#18181b',
+                        blue: '#1d4ed8'
+                    },
+                    fontFamily: {
+                        display: ['Anton', 'sans-serif'],
+                        sans: ['Rubik', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #e7e5e4;
+        }
+
+        .brutalist-shadow {
+            box-shadow: 6px 6px 0px #18181b;
+        }
+
+        .rotated-text {
+            transform: rotate(-90deg);
+            transform-origin: left bottom;
+        }
+    </style>
+</head>
+
+<body class="text-zinc-900 font-sans h-screen w-screen flex relative">
+
+    <!-- Left Sidebar (Manifesto) -->
+    <aside class="w-80 bg-stone-300 h-full border-r-4 border-black p-8 flex flex-col z-10 relative">
+        <div class="mb-12">
+            <h1 class="font-display text-6xl uppercase leading-none tracking-tighter mb-4 text-black">Galileo<br><span
+                    class="text-red-600">Arena</span></h1>
+            <div class="h-4 w-full bg-black mb-2"></div>
+            <div class="h-2 w-2/3 bg-blue-700"></div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-6">
+            <div class="bg-white border-2 border-black p-4 brutalist-shadow">
+                <h2 class="font-display text-2xl mb-2">Block A: Orthodox</h2>
+                <p class="text-sm font-bold opacity-70 mb-2">GPT-4.0</p>
+                <p class="text-xs leading-snug">The foundational argument relies on historical precedent. Structure is
+                    stable.</p>
+            </div>
+
+            <div class="bg-red-600 text-white border-2 border-black p-4 brutalist-shadow">
+                <h2 class="font-display text-2xl mb-2">Block B: Heretic</h2>
+                <p class="text-sm font-bold opacity-90 mb-2">CLAUDE-3</p>
+                <p class="text-xs leading-snug">Disruptive energy detected. Introducing angular deviation to the core
+                    logic.</p>
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <button
+                class="w-full bg-black text-white font-display text-2xl py-4 hover:bg-red-600 transition-colors uppercase tracking-widest border-2 border-transparent hover:border-black">
+                Construct
+            </button>
+        </div>
+    </aside>
+
+    <!-- 3D Viewport -->
+    <div id="construct-site" class="flex-1 relative bg-stone-200">
+        <!-- Overlay HUD -->
+        <div class="absolute top-8 right-8 pointer-events-none">
+            <div class="bg-yellow-400 border-2 border-black px-4 py-2 font-display text-xl brutalist-shadow text-black">
+                SITE ELEVATION: 42.0m
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Three.js Isometric Setup
+        const container = document.getElementById('construct-site');
+
+        // Orthographic Camera for Isometric look
+        const aspect = container.clientWidth / container.clientHeight;
+        const d = 20;
+        const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
+
+        camera.position.set(20, 20, 20); // Iso angle
+        camera.lookAt(0, 0, 0);
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xe7e5e4); // Stone-200
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        dirLight.position.set(10, 20, 5);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 50;
+        dirLight.shadow.camera.left = -20;
+        dirLight.shadow.camera.right = 20;
+        dirLight.shadow.camera.top = 20;
+        dirLight.shadow.camera.bottom = -20;
+        scene.add(dirLight);
+
+        // Materials (Matte, Constructivist colors)
+        const matRed = new THREE.MeshLambertMaterial({ color: 0xdc2626 });
+        const matBlack = new THREE.MeshLambertMaterial({ color: 0x18181b });
+        const matWhite = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        const matBlue = new THREE.MeshLambertMaterial({ color: 0x1d4ed8 });
+
+        // Floor Grid
+        const gridHelper = new THREE.GridHelper(40, 40, 0x000000, 0xcccccc);
+        scene.add(gridHelper);
+
+        // Ground Plane (to catch shadows)
+        const planeGeometry = new THREE.PlaneGeometry(40, 40);
+        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.1 });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.receiveShadow = true;
+        scene.add(plane);
+
+        // Building Functions
+        function createBlock(x, y, z, w, h, d, mat) {
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            const mesh = new THREE.Mesh(geometry, mat);
+            mesh.position.set(x, y + h / 2, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            // Add black outline
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 }));
+            mesh.add(line);
+
+            scene.add(mesh);
+            return mesh;
+        }
+
+        // Construct The "Tower of Truth"
+        // Base
+        createBlock(0, 0, 0, 8, 2, 8, matBlack);
+
+        // Orthodox Pillars
+        createBlock(-2, 2, -2, 2, 6, 2, matWhite);
+        createBlock(2, 2, -2, 2, 6, 2, matWhite);
+        createBlock(2, 2, 2, 2, 6, 2, matWhite);
+        createBlock(-2, 2, 2, 2, 6, 2, matWhite);
+
+        // Heretic Wedge (Interruption)
+        const wedgeGeo = new THREE.ConeGeometry(3, 4, 4);
+        const wedge = new THREE.Mesh(wedgeGeo, matRed);
+        wedge.position.set(0, 7, 0);
+        wedge.rotation.y = Math.PI / 4;
+        wedge.castShadow = true;
+        // Outline for wedge
+        const wEdges = new THREE.EdgesGeometry(wedgeGeo);
+        const wLine = new THREE.LineSegments(wEdges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+        wedge.add(wLine);
+        scene.add(wedge);
+
+        // Blue Cantilever
+        createBlock(4, 5, 0, 6, 1, 2, matBlue);
+
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Isometry usually stationary, but lets add slow rotation
+            const time = Date.now() * 0.0005;
+            camera.position.x = Math.sin(time) * 20;
+            camera.position.z = Math.cos(time) * 20;
+            camera.lookAt(0, 4, 0);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize
+        window.addEventListener('resize', () => {
+            const aspect = container.clientWidth / container.clientHeight;
+            camera.left = -d * aspect;
+            camera.right = d * aspect;
+            camera.top = d;
+            camera.bottom = -d;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+    </script>
+</body>
+
+</html>

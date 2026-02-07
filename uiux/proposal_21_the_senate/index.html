@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galileo Arena - The Senate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Orbitron:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        void: '#0a0b14',
+                        pod: '#1a1c2e',
+                    },
+                    fontFamily: {
+                        serif: ['Cinzel', 'serif'],
+                        tech: ['Orbitron', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'beam': '0 0 50px rgba(255, 255, 255, 0.1)',
+                        'glow-blue': '0 0 20px cyan',
+                        'glow-red': '0 0 20px crimson',
+                        'glow-gold': '0 0 20px gold',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chamber-depth {
+            perspective: 1200px;
+            transform-style: preserve-3d;
+        }
+
+        .pod {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pod:hover,
+        .pod.active {
+            transform: translateZ(50px) translateY(-20px);
+            filter: brightness(1.2);
+        }
+
+        .hologram-text {
+            background: linear-gradient(180deg, rgba(0, 243, 255, 0) 0%, rgba(0, 243, 255, 0.1) 20%, rgba(0, 243, 255, 0.1) 80%, rgba(0, 243, 255, 0) 100%);
+            border-left: 1px solid rgba(0, 243, 255, 0.3);
+            border-right: 1px solid rgba(0, 243, 255, 0.3);
+        }
+
+        .spotlight {
+            background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+        }
+    </style>
+</head>
+
+<body class="bg-void text-slate-300 h-screen overflow-hidden flex flex-col items-center">
+
+    <!-- Ambient Lighting -->
+    <div class="spotlight absolute inset-0 pointer-events-none z-0"></div>
+
+    <!-- The Judge (Top Center, elevated) -->
+    <div class="relative z-10 mt-8 mb-4">
+        <div class="flex flex-col items-center">
+            <div
+                class="w-24 h-24 border-4 border-slate-600 rounded-full flex items-center justify-center bg-slate-800 shadow-beam relative group cursor-pointer">
+                <div class="absolute inset-0 rounded-full border border-white/20 animate-ping opacity-20"></div>
+                <!-- Mechanical Eye -->
+                <div class="w-16 h-16 bg-black rounded-full border border-slate-500 flex items-center justify-center">
+                    <div class="w-4 h-4 bg-emerald-400 rounded-full shadow-[0_0_15px_#34d399]"></div>
+                </div>
+            </div>
+            <div class="mt-2 text-center">
+                <h1 class="font-serif text-white tracking-[0.3em] font-bold text-lg">JUDGE: SUPREME</h1>
+                <div class="font-tech text-xs text-emerald-500 tracking-widest">VERDICT: PENDING</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- The Arena (3D Space) -->
+    <main class="flex-1 w-full max-w-6xl chamber-depth flex items-center justify-center relative">
+
+        <!-- Center Hologram (Transcript) -->
+        <div
+            class="absolute inset-0 flex items-center justify-center pointer-events-none transform translate-z-[-100px]">
+            <div
+                class="w-[500px] h-[60vh] hologram-text flex flex-col justify-end p-8 fade-mask overflow-hidden items-center text-center opacity-60">
+                <p class="font-serif text-lg text-cyan-200 mb-4 drop-shadow-md">"The logic presented regarding
+                    asynchronous mentorship is compelling..."</p>
+                <p class="font-serif text-sm text-slate-400">waiting for next packet...</p>
+                <!-- Scanlines -->
+                <div
+                    class="w-full h-full absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSJyZ2JhKDAsIDI0MywgMjU1LCAwLjEpIi8+Cjwvc3ZnPg==')] opacity-30">
+                </div>
+            </div>
+        </div>
+
+        <!-- Delegates Layout -->
+        <div class="w-full flex justify-between items-end px-12 pb-20 relative z-20">
+
+            <!-- Orthodox Pod (Left) -->
+            <div class="pod group flex flex-col items-center transform rotate-y-[20deg] origin-bottom-right">
+                <!-- Avatar -->
+                <div
+                    class="w-32 h-40 bg-pod border-2 border-cyan-800 rounded-t-full relative overflow-hidden flex items-end justify-center shadow-lg group-hover:shadow-glow-blue transition duration-500">
+                    <!-- "Robot" Face CSS -->
+                    <div class="w-20 h-24 bg-slate-900 rounded-t-lg mb-0 relative border border-slate-700">
+                        <div class="absolute top-6 left-3 w-5 h-1 bg-cyan-400 shadow-[0_0_10px_cyan]"></div>
+                        <div class="absolute top-6 right-3 w-5 h-1 bg-cyan-400 shadow-[0_0_10px_cyan]"></div>
+                        <div class="absolute bottom-4 left-4 right-4 h-0.5 bg-slate-600"></div>
+                    </div>
+                </div>
+                <!-- Podium -->
+                <div
+                    class="w-40 h-32 bg-gradient-to-b from-slate-800 to-black border-x border-t border-slate-700 transform perspective-100 flex flex-col items-center pt-4">
+                    <span class="font-serif text-cyan-400 text-lg font-bold tracking-widest">ORTHODOX</span>
+                    <span class="font-tech text-xs text-slate-500">GPT-4o</span>
+                    <!-- Health/Confidence Bar -->
+                    <div class="w-24 h-1 bg-slate-900 mt-2">
+                        <div class="w-3/4 h-full bg-cyan-600"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skeptic Pod (Center, Lower) -->
+            <div class="pod group flex flex-col items-center transform translate-y-12 scale-90">
+                <div
+                    class="w-32 h-40 bg-pod border-2 border-amber-800 rounded-t-full relative overflow-hidden flex items-end justify-center shadow-lg group-hover:shadow-glow-gold transition duration-500">
+                    <div
+                        class="w-20 h-24 bg-slate-900 rounded-t-full mb-0 relative border border-slate-700 flex items-center justify-center">
+                        <!-- Cyclops Eye -->
+                        <div
+                            class="w-12 h-12 bg-black rounded-full border border-amber-900 flex items-center justify-center">
+                            <div class="w-4 h-4 bg-amber-500 rounded-full shadow-[0_0_10px_orange] animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    class="w-40 h-24 bg-gradient-to-b from-slate-800 to-black border-x border-t border-slate-700 flex flex-col items-center pt-4">
+                    <span class="font-serif text-amber-500 text-lg font-bold tracking-widest">SKEPTIC</span>
+                    <span class="font-tech text-xs text-slate-500">GROK-2</span>
+                </div>
+            </div>
+
+            <!-- Heretic Pod (Right) -->
+            <div class="pod active flex flex-col items-center transform rotate-y-[-20deg] origin-bottom-left">
+                <div
+                    class="w-32 h-40 bg-pod border-2 border-red-800 rounded-t-full relative overflow-hidden flex items-end justify-center shadow-lg shadow-glow-red transition duration-500">
+                    <div class="w-20 h-24 bg-slate-900 rounded-t-lg mb-0 relative border border-slate-700">
+                        <div class="absolute top-6 left-3 w-4 h-4 bg-red-500 rounded-full shadow-[0_0_10px_red]"></div>
+                        <div class="absolute top-6 right-3 w-4 h-4 bg-red-500 rounded-full shadow-[0_0_10px_red]"></div>
+                        <!-- Mouth speaking animation -->
+                        <div class="absolute bottom-4 left-6 right-6 h-1 bg-red-500/50 animate-pulse"></div>
+                    </div>
+                </div>
+                <div
+                    class="w-40 h-32 bg-gradient-to-b from-slate-800 to-black border-x border-t border-slate-700 flex flex-col items-center pt-4">
+                    <span class="font-serif text-red-500 text-lg font-bold tracking-widest">HERETIC</span>
+                    <span class="font-tech text-xs text-slate-500">CLAUDE-3</span>
+                    <div class="text-xs text-red-400 mt-2 animate-bounce uppercase font-bold">Speaking...</div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- UI Overlay (Bottom) -->
+    <footer class="w-full h-16 bg-slate-900 border-t border-slate-700 flex items-center justify-between px-8 z-30">
+        <div class="font-tech text-xs text-slate-500">SESSION ID: <span class="text-slate-300">882-ALPHA</span></div>
+        <div class="font-serif text-slate-400 tracking-widest text-sm">COUNCIL IN SESSION</div>
+        <div class="flex gap-4">
+            <button
+                class="px-4 py-1 border border-slate-600 rounded hover:bg-white/10 text-xs font-bold transition">PAUSE</button>
+            <button
+                class="px-4 py-1 bg-red-900/50 border border-red-800 rounded hover:bg-red-800 text-red-200 text-xs font-bold transition">VETO</button>
+        </div>
+    </footer>
+
+</body>
+
+</html>

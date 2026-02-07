@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galileo Arena - Proposal 20: Fractal Spire</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Montserrat:wght@300;500&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #240046;
+            font-family: 'Montserrat', sans-serif;
+            color: #fff;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background: radial-gradient(circle, transparent 30%, #240046 100%);
+        }
+
+        h1 {
+            font-family: 'Cinzel Decorative', serif;
+            font-size: 4rem;
+            color: #ff9e00;
+            text-shadow: 0 0 20px rgba(255, 158, 0, 0.5);
+            margin: 0;
+            pointer-events: auto;
+            cursor: default;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            letter-spacing: 5px;
+            color: #4cc9f0;
+            margin-bottom: 20px;
+        }
+
+        #kaleidoscope-controls {
+            pointer-events: auto;
+            display: flex;
+            gap: 40px;
+            margin-top: 50px;
+        }
+
+        .fractal-btn {
+            background: transparent;
+            border: 2px solid #f72585;
+            color: #f72585;
+            padding: 10px 30px;
+            font-family: 'Cinzel Decorative', serif;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.5s ease;
+            position: relative;
+        }
+
+        .fractal-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f72585;
+            z-index: -1;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s;
+        }
+
+        .fractal-btn:hover {
+            color: #fff;
+        }
+
+        .fractal-btn:hover::before {
+            transform: scaleX(1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="overlay">
+        <h1>FRACTAL SPIRE</h1>
+        <div class="subtitle">The Geometry of Truth</div>
+
+        <div id="kaleidoscope-controls">
+            <button class="fractal-btn" onclick="evolve()">EVOLVE</button>
+            <button class="fractal-btn" onclick="simplify()">SIMPLIFY</button>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // --- THREE JS SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x240046);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 20;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // --- OBJECTS ---
+
+        // Recursive Tetrahedron function
+        const group = new THREE.Group();
+        scene.add(group);
+
+        let iteration = 0;
+        let shapes = [];
+
+        function createTetrahedron(radius, pos, parent) {
+            const geometry = new THREE.TetrahedronGeometry(radius);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x4cc9f0,
+                wireframe: false,
+                specular: 0xff9e00,
+                shininess: 50,
+                transparent: true,
+                opacity: 0.8
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(pos);
+            parent.add(mesh);
+            shapes.push(mesh);
+            return mesh;
+        }
+
+        // Initial Shape
+        const root = createTetrahedron(5, new THREE.Vector3(0, 0, 0), group);
+
+        // Lights
+        const light = new THREE.PointLight(0xffffff, 1, 100);
+        light.position.set(0, 0, 10);
+        scene.add(light);
+
+        const light2 = new THREE.PointLight(0xf72585, 2, 50);
+        light2.position.set(10, 10, 10);
+        scene.add(light2);
+
+        // --- ANIMATION ---
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotate entire group
+            group.rotation.x += 0.005;
+            group.rotation.y += 0.01;
+
+            // Pulse colors
+            const time = Date.now() * 0.001;
+            shapes.forEach((s, i) => {
+                const hue = (time * 0.1 + i * 0.01) % 1;
+                s.material.color.setHSL(hue, 0.5, 0.5);
+                s.scale.setScalar(1 + Math.sin(time * 2 + i) * 0.1);
+            });
+
+            // Camera zoom pulse
+            camera.position.z = 20 + Math.sin(time * 0.5) * 5;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- LOGIC ---
+
+        function evolve() {
+            // Add particles / child shapes
+            if (iteration > 2) return; // Limit due to perf
+            iteration++;
+
+            const newShapes = [];
+            shapes.forEach(parent => {
+                // Add 4 children around it
+                for (let i = 0; i < 4; i++) {
+                    const r = parent.geometry.parameters.radius / 2;
+                    const vec = new THREE.Vector3(
+                        (Math.random() - 0.5) * r * 3,
+                        (Math.random() - 0.5) * r * 3,
+                        (Math.random() - 0.5) * r * 3
+                    );
+                    const child = createTetrahedron(r, vec, parent);
+                    newShapes.push(child);
+                }
+            });
+            // shapes = shapes.concat(newShapes); // Just track active ones? No need to track all strictly for this demo
+        }
+
+        function simplify() {
+            // Clear children
+            while (group.children.length > 0) {
+                group.remove(group.children[0]);
+            }
+            // Re-add root
+            shapes = [];
+            iteration = 0;
+            const rt = createTetrahedron(5, new THREE.Vector3(0, 0, 0), group);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+
+</html>
