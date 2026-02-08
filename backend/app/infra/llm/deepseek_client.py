@@ -1,5 +1,3 @@
-"""DeepSeek client – OpenAI-compatible, just a different base URL."""
-
 from .costs import DEEPSEEK_CHAT_PRICING
 from .openai_compatible import OpenAICompatibleClient
 

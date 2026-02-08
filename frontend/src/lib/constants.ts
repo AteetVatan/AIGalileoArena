@@ -22,3 +22,10 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
   { provider: "grok", model_name: "grok-2", label: "Grok 2", api_key_env: "GROK_API_KEY" },
   { provider: "grok", model_name: "grok-2-mini", label: "Grok 2 Mini", api_key_env: "GROK_API_KEY" },
 ];
+
+export const ROLE_COLORS: Record<string, string> = {
+  Orthodox: "text-blue-400",
+  Heretic: "text-orange-400",
+  Skeptic: "text-purple-400",
+  Judge: "text-emerald-400",
+};

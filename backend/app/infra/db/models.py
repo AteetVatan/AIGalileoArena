@@ -1,4 +1,4 @@
-"""SQLAlchemy 2.x async ORM models – 8 tables."""
+"""SQLAlchemy 2.x async ORM models."""
 
 from __future__ import annotations
 
@@ -26,8 +26,7 @@ class Base(DeclarativeBase):
     pass
 
 
-# ── datasets ─────────────────────────────────────────────────────────────────
-
+# --- datasets ---
 
 class DatasetRow(Base):
     __tablename__ = "datasets"
@@ -36,16 +35,11 @@ class DatasetRow(Base):
     version: Mapped[str] = mapped_column(String(32), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     meta_json: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     cases: Mapped[list["DatasetCaseRow"]] = relationship(
         back_populates="dataset", cascade="all, delete-orphan"
     )
-
-
-# ── dataset_cases ────────────────────────────────────────────────────────────
 
 
 class DatasetCaseRow(Base):
@@ -61,9 +55,7 @@ class DatasetCaseRow(Base):
     pressure_score: Mapped[int] = mapped_column(Integer, nullable=False)
     label: Mapped[str] = mapped_column(String(32), nullable=False)
     evidence_json: Mapped[list] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     dataset: Mapped["DatasetRow"] = relationship(back_populates="cases")
 
@@ -72,8 +64,7 @@ class DatasetCaseRow(Base):
     )
 
 
-# ── runs ─────────────────────────────────────────────────────────────────────
-
+# --- runs ---
 
 class RunRow(Base):
     __tablename__ = "runs"
@@ -84,13 +75,9 @@ class RunRow(Base):
     )
     status: Mapped[str] = mapped_column(String(32), default=RunStatus.PENDING)
     models_json: Mapped[list] = mapped_column(JSON, nullable=False)
-    max_cases: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow
-    )
-    finished_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, nullable=True
-    )
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     case_statuses: Mapped[list["RunCaseStatusRow"]] = relationship(
         back_populates="run", cascade="all, delete-orphan"
@@ -106,9 +93,6 @@ class RunRow(Base):
     )
 
 
-# ── run_case_status ──────────────────────────────────────────────────────────
-
-
 class RunCaseStatusRow(Base):
     __tablename__ = "run_case_status"
 
@@ -119,12 +103,8 @@ class RunCaseStatusRow(Base):
     case_id: Mapped[str] = mapped_column(String(128), nullable=False)
     model_key: Mapped[str] = mapped_column(String(128), nullable=False)
     status: Mapped[str] = mapped_column(String(32), default=RunStatus.PENDING)
-    started_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, nullable=True
-    )
-    finished_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, nullable=True
-    )
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     run: Mapped["RunRow"] = relationship(back_populates="case_statuses")
 
@@ -133,8 +113,7 @@ class RunCaseStatusRow(Base):
     )
 
 
-# ── run_messages ─────────────────────────────────────────────────────────────
-
+# --- messages ---
 
 class RunMessageRow(Base):
     __tablename__ = "run_messages"
@@ -149,9 +128,7 @@ class RunMessageRow(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     phase: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     round: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     run: Mapped["RunRow"] = relationship(back_populates="messages")
 
@@ -160,8 +137,7 @@ class RunMessageRow(Base):
     )
 
 
-# ── run_results ──────────────────────────────────────────────────────────────
-
+# --- results ---
 
 class RunResultRow(Base):
     __tablename__ = "run_results"
@@ -178,15 +154,11 @@ class RunResultRow(Base):
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
     evidence_used_json: Mapped[list] = mapped_column(JSON, nullable=False)
-    critical_fail_reason: Mapped[Optional[str]] = mapped_column(
-        Text, nullable=True
-    )
+    critical_fail_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     cost_estimate: Mapped[float] = mapped_column(Float, default=0.0)
     judge_json: Mapped[dict] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     run: Mapped["RunRow"] = relationship(back_populates="results")
 
@@ -195,8 +167,7 @@ class RunResultRow(Base):
     )
 
 
-# ── run_events ───────────────────────────────────────────────────────────────
-
+# --- events ---
 
 class RunEventRow(Base):
     __tablename__ = "run_events"
@@ -208,9 +179,7 @@ class RunEventRow(Base):
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     payload_json: Mapped[dict] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     run: Mapped["RunRow"] = relationship(back_populates="events")
 
@@ -219,7 +188,7 @@ class RunEventRow(Base):
     )
 
 
-# ── cached_result_sets ──────────────────────────────────────────────────────
+# --- cache slots ---
 
 CACHE_SLOT_TTL = timedelta(hours=24)
 
@@ -236,24 +205,19 @@ class CachedResultSetRow(Base):
         String(64), ForeignKey("datasets.id"), nullable=False
     )
     model_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False)
     slot_number: Mapped[int] = mapped_column(Integer, nullable=False)
     source_run_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("runs.run_id"), nullable=False
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow
-    )
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime, default=_default_expires_at
-    )
-    last_served_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, nullable=True
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, default=_default_expires_at)
+    last_served_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     __table_args__ = (
         UniqueConstraint(
-            "dataset_id", "model_key", "slot_number",
+            "dataset_id", "model_key", "case_id", "slot_number",
             name="uq_cache_slot",
         ),
-        Index("ix_cache_dataset_model_exp", "dataset_id", "model_key", "expires_at"),
+        Index("ix_cache_dataset_model_case_exp", "dataset_id", "model_key", "case_id", "expires_at"),
     )

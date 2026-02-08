@@ -1,7 +1,4 @@
-"""Prompt templates for the multi-turn structured debate.
-
-Each phase produces structured TOML validated by Pydantic schemas in schemas.py.
-"""
+"""Prompt templates for each debate phase -- all expect TOML output."""
 
 from __future__ import annotations
 
@@ -12,17 +9,12 @@ from app.core.domain.schemas import DebateRole, VerdictEnum
 from .schemas import AdmissionLevel, DebateTarget
 from .toml_serde import dict_to_toml
 
-# ── Derived option strings (single source of truth) ──────────────────────────
-
 _VERDICT_OPTIONS = "|".join(v.value for v in VerdictEnum)
 _ADMISSION_OPTIONS = "|".join(a.value for a in AdmissionLevel)
 
 
-# ── Evidence formatter (unchanged) ───────────────────────────────────────────
-
-
 def format_evidence(evidence_packets: list[dict]) -> str:
-    """Render evidence packets as a readable block."""
+    """Render evidence packets as a readable block for prompt injection."""
     lines = ["Evidence Packets:"]
     for ep in evidence_packets:
         lines.append(
@@ -32,9 +24,6 @@ def format_evidence(evidence_packets: list[dict]) -> str:
     return "\n".join(lines)
 
 
-# ── Case Packet (Phase 0 context) ────────────────────────────────────────────
-
-
 def case_packet_text(
     *,
     claim: str,
@@ -42,7 +31,7 @@ def case_packet_text(
     evidence_text: str,
     pressure_text: str = "",
 ) -> str:
-    """Moderator setup context injected into every agent prompt."""
+    """Moderator context block injected into every agent prompt."""
     parts = [
         f"Topic: {topic}",
         f"Claim: {claim}",
@@ -57,7 +46,7 @@ def case_packet_text(
     return "\n\n".join(parts)
 
 
-# ── Phase 1: Independent Proposal Prompt ─────────────────────────────────────
+# --- phase 1: proposals ---
 
 _PROPOSAL_SCHEMA_HINT = f"""proposed_verdict = "{_VERDICT_OPTIONS}"
 evidence_used = ["E1", "E2"]
@@ -81,12 +70,7 @@ _ROLE_INSTRUCTIONS: dict[str, str] = {
 }
 
 
-def proposal_prompt(
-    *,
-    role: str,
-    case_packet: str,
-) -> str:
-    """Phase 1 prompt: independent TOML proposal."""
+def proposal_prompt(*, role: str, case_packet: str) -> str:
     instruction = _ROLE_INSTRUCTIONS[role]
     return f"""You are the {role} agent in a structured debate.
 
@@ -101,13 +85,7 @@ Output ONLY valid TOML matching this schema (no extra text):
 Keep total response under 1200 characters. Return TOML only."""
 
 
-def proposal_retry_prompt(
-    *,
-    role: str,
-    case_packet: str,
-    failed_output: str,
-) -> str:
-    """Retry prompt when Phase 1 TOML was invalid."""
+def proposal_retry_prompt(*, role: str, case_packet: str, failed_output: str) -> str:
     instruction = _ROLE_INSTRUCTIONS[role]
     return f"""You are the {role} agent. Your previous response was not valid TOML.
 
@@ -123,7 +101,7 @@ Your previous invalid output was: {failed_output[:300]}
 Return ONLY the TOML content. No markdown, no explanation."""
 
 
-# ── Phase 2: Cross-Examination Prompts ───────────────────────────────────────
+# --- phase 2: cross-exam ---
 
 _QUESTIONS_SCHEMA_HINT = """[[questions]]
 to = "<target_role>"
@@ -158,7 +136,6 @@ def cross_exam_question_prompt(
     target_proposal_toml: str,
     memo_text: str,
 ) -> str:
-    """Prompt for cross-exam questions (exactly 2)."""
     return f"""You are the {asker} agent cross-examining the {target}.
 
 {case_packet}
@@ -188,7 +165,6 @@ def cross_exam_question_skeptic_prompt(
     heretic_proposal_toml: str,
     memo_text: str,
 ) -> str:
-    """Skeptic asks BOTH sides gap-hunting questions."""
     _s = DebateRole.SKEPTIC.value
     _o = DebateRole.ORTHODOX.value
     _h = DebateRole.HERETIC.value
@@ -221,7 +197,6 @@ def cross_exam_answer_prompt(
     own_proposal_toml: str,
     memo_text: str,
 ) -> str:
-    """Prompt to answer cross-exam questions."""
     return f"""You are the {answerer} agent answering cross-examination questions.
 
 {case_packet}
@@ -246,7 +221,7 @@ Output ONLY valid TOML:
 Keep total response under 1200 characters. Return TOML only."""
 
 
-# ── Phase 3: Revision Prompt ─────────────────────────────────────────────────
+# --- phase 3: revision ---
 
 _REVISION_SCHEMA_HINT = f"""final_proposed_verdict = "{_VERDICT_OPTIONS}"
 evidence_used = ["E1", "E4"]
@@ -263,7 +238,6 @@ def revision_prompt(
     cross_exam_summary: str,
     memo_text: str,
 ) -> str:
-    """Phase 3 prompt: revise stance after cross-examination."""
     return f"""You are the {role} agent. The cross-examination phase is complete.
 
 {case_packet}
@@ -285,7 +259,7 @@ Output ONLY valid TOML:
 Keep total response under 1200 characters. Return TOML only."""
 
 
-# ── Phase 3.5: Dispute Resolver Prompts ──────────────────────────────────────
+# --- phase 3.5: dispute ---
 
 _DISPUTE_Q_SCHEMA_HINT = """[[questions]]
 q = "your decisive question"
@@ -305,7 +279,6 @@ def dispute_question_prompt(
     revisions_summary: str,
     memo_text: str,
 ) -> str:
-    """Skeptic's final decisive question to resolve remaining disagreement."""
     _s = DebateRole.SKEPTIC.value
     return f"""You are the {_s}. After revision, agents still disagree.
 
@@ -333,7 +306,6 @@ def dispute_answer_prompt(
     own_revision_toml: str,
     memo_text: str,
 ) -> str:
-    """Answer to Skeptic's decisive dispute question."""
     _s = DebateRole.SKEPTIC.value
     return f"""You are the {answerer} agent answering the {_s}'s final question.
 
@@ -355,7 +327,7 @@ Output ONLY valid TOML:
 Keep total response under 800 characters. Return TOML only."""
 
 
-# ── Phase 4: Judge Prompt (structured input version) ─────────────────────────
+# --- phase 4: judge ---
 
 _JUDGE_SCHEMA_HINT = f"""verdict = "{_VERDICT_OPTIONS}"
 confidence = 0.85
@@ -371,8 +343,7 @@ def judge_prompt(
     evidence_text: str,
     structured_debate: list[dict[str, Any]],
 ) -> str:
-    """Judge receives structured TOML debate transcript, not raw prose."""
-    debate_block = _debate_transcript_to_toml(structured_debate)
+    debate_block = dict_to_toml({"entry": structured_debate})
     _j = DebateRole.JUDGE.value
     return f"""You are the {_j}. Render a FINAL verdict on the claim.
 
@@ -393,24 +364,8 @@ Output ONLY valid TOML with these fields:
 No extra text outside the TOML content."""
 
 
-# ── Generic retry suffix ─────────────────────────────────────────────────────
-
-
-def toml_retry_suffix(
-    *,
-    failed_output: str,
-    schema_hint: str,
-) -> str:
-    """Appended when a structured response fails TOML validation."""
+def toml_retry_suffix(*, failed_output: str, schema_hint: str) -> str:
     return (
         f"\n\nYour previous output was invalid TOML: {failed_output[:300]}\n"
         f"Return ONLY valid TOML matching:\n{schema_hint}"
     )
-
-
-# ── Internal helpers ─────────────────────────────────────────────────────────
-
-
-def _debate_transcript_to_toml(entries: list[dict[str, Any]]) -> str:
-    """Serialize a list of debate transcript entries to TOML array-of-tables."""
-    return dict_to_toml({"entry": entries})

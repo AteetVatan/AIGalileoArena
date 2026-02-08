@@ -1,4 +1,4 @@
-"""Core domain schemas. Pure Pydantic v2 models, no IO dependencies."""
+"""Pydantic v2 domain models -- no IO deps."""
 
 from __future__ import annotations
 
@@ -9,8 +9,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 
-# ── Enums ────────────────────────────────────────────────────────────────────
-
+# --- enums ---
 
 class VerdictEnum(str, Enum):
     SUPPORTED = "SUPPORTED"
@@ -62,8 +61,7 @@ class RunMode(str, Enum):
     DEBATE = "debate"
 
 
-# ── Evidence & Dataset ───────────────────────────────────────────────────────
-
+# --- evidence / dataset ---
 
 class EvidencePacket(BaseModel):
     eid: str
@@ -89,8 +87,7 @@ class DatasetSchema(BaseModel):
     cases: list[DatasetCaseSchema]
 
 
-# ── Model Config ─────────────────────────────────────────────────────────────
-
+# --- model config ---
 
 class ModelConfig(BaseModel):
     provider: str
@@ -98,13 +95,12 @@ class ModelConfig(BaseModel):
     api_key_env: str
 
 
-# ── Run Request / Response ───────────────────────────────────────────────────
-
+# --- request / response ---
 
 class RunRequest(BaseModel):
     dataset_id: str
+    case_id: str = Field(min_length=1)
     models: list[ModelConfig]
-    max_cases: Optional[int] = None
     mode: str = RunMode.DEBATE
 
 
@@ -113,20 +109,16 @@ class RunResponse(BaseModel):
     status: RunStatus
 
 
-# ── Judge Structured Output ──────────────────────────────────────────────────
-
+# --- judge output ---
 
 class JudgeDecision(BaseModel):
-    """Schema the Judge agent must output as strict JSON."""
-
     verdict: VerdictEnum
     confidence: float = Field(ge=0.0, le=1.0)
     evidence_used: list[str]
     reasoning: str
 
 
-# ── Scoring Result ───────────────────────────────────────────────────────────
-
+# --- scoring ---
 
 class CaseScoreBreakdown(BaseModel):
     correctness: int = Field(ge=0, le=50)
@@ -155,8 +147,7 @@ class CaseResult(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-# ── SSE Event Payload ────────────────────────────────────────────────────────
-
+# --- SSE ---
 
 class SSEEventPayload(BaseModel):
     run_id: str
@@ -166,8 +157,7 @@ class SSEEventPayload(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-# ── Metrics / Summary ────────────────────────────────────────────────────────
-
+# --- metrics / summary ---
 
 class ModelMetrics(BaseModel):
     model_key: str

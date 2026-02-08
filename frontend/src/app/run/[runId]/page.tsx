@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useSSE } from "@/hooks/useSSE";
 import { useRunData } from "@/hooks/useRunData";
@@ -11,7 +11,7 @@ import { PressureScatter } from "@/components/PressureScatter";
 import { ConfusionMatrix } from "@/components/ConfusionMatrix";
 import { CalibrationChart } from "@/components/CalibrationChart";
 import { FailGallery } from "@/components/FailGallery";
-import type { SSEEvent, AgentMessage, CaseResult } from "@/lib/types";
+import type { SSEEvent, AgentMessage, CaseResult, DatasetDetail } from "@/lib/types";
 
 export default function RunDashboard() {
   const { runId } = useParams<{ runId: string }>();
@@ -19,6 +19,7 @@ export default function RunDashboard() {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [scores, setScores] = useState<CaseResult[]>([]);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
+  const [datasetInfo, setDatasetInfo] = useState<{ datasetId: string; caseTopic: string } | null>(null);
 
   const handleEvent = useCallback((event: SSEEvent) => {
     const p = event.payload as Record<string, any>;
@@ -26,7 +27,13 @@ export default function RunDashboard() {
       case "agent_message":
         setMessages((prev) => [
           ...prev,
-          { role: p.role, model_key: p.model_key, content: p.content },
+          {
+            role: p.role,
+            model_key: p.model_key,
+            content: p.content,
+            phase: p.phase,
+            round: p.round,
+          },
         ]);
         break;
       case "case_scored":
@@ -53,6 +60,28 @@ export default function RunDashboard() {
 
   useSSE(runId ? api.eventsUrl(runId) : null, handleEvent);
 
+  // Fetch dataset and case information when run data is available
+  useEffect(() => {
+    if (!run?.dataset_id || !run?.case_id) return;
+
+    const fetchDatasetInfo = async () => {
+      try {
+        const dataset: DatasetDetail = await api.getDataset(run.dataset_id);
+        const caseData = dataset.cases.find((c) => c.case_id === run.case_id);
+        if (caseData) {
+          setDatasetInfo({
+            datasetId: dataset.id,
+            caseTopic: caseData.topic,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch dataset info:", err);
+      }
+    };
+
+    fetchDatasetInfo();
+  }, [run?.dataset_id, run?.case_id]);
+
   if (loading) {
     return <div className="text-slate-400 text-center py-20">Loading run...</div>;
   }
@@ -68,7 +97,17 @@ export default function RunDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">
-            Run <span className="text-cyan-400">{runId?.slice(0, 8)}</span>
+            {datasetInfo ? (
+              <span>
+                <span className="text-cyan-400">{datasetInfo.datasetId}</span>
+                <span className="text-slate-400">-</span>
+                <span className="text-cyan-400">{datasetInfo.caseTopic}</span>
+              </span>
+            ) : (
+              <>
+                Run <span className="text-cyan-400">{runId?.slice(0, 8)}</span>
+              </>
+            )}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Status:{" "}

@@ -1,4 +1,4 @@
-"""Application settings via pydantic-settings. All config from env vars."""
+"""App settings -- all config from env vars via pydantic-settings."""
 
 from pathlib import Path
 from typing import Optional
@@ -6,7 +6,6 @@ from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Resolve .env file path relative to backend directory (2 levels up from this file)
 _BACKEND_ROOT = Path(__file__).parent.parent
 _ENV_FILE = _BACKEND_ROOT / ".env"
 
@@ -20,7 +19,6 @@ class Settings(BaseSettings):
 
     database_url: str = Field(
         default="postgresql+asyncpg://galileo:galileo_pass@localhost:5432/galileo_arena",
-        description="Database connection URL",
     )
     openai_api_key: Optional[str] = Field(
         default=None,
@@ -51,24 +49,19 @@ class Settings(BaseSettings):
         description="Logging level from LOG_LEVEL env var",
     )
 
-    # ── Cache / replay settings ───────────────────────────────────────────
+    # cache / replay
     store_result: bool = Field(
         default=False,
         description="Persist LLM results as cache slots and serve from cache when available",
     )
-    max_cases: Optional[int] = Field(
-        default=None,
-        description="Max dataset cases per run (None = all cases)",
-    )
     cache_results: int = Field(
         default=4,
         ge=1,
-        description="Number of cache slots per (dataset, model) pair",
+        description="Number of cache slots per (dataset, model, case) triple",
     )
 
     @property
     def debug_mode(self) -> bool:
-        """Check if backend is running in debug mode (LOG_LEVEL=DEBUG)."""
         return self.log_level.upper() == "DEBUG"
 
 

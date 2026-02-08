@@ -1,7 +1,7 @@
 /* Typed API client for the FastAPI backend. */
 
 import { API_BASE } from "./constants";
-import type { Dataset, RunInfo, RunSummary, CaseResult, RunRequest } from "./types";
+import type { Dataset, DatasetDetail, RunInfo, RunSummary, CaseResult, RunRequest } from "./types";
 
 async function fetchJSON<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`);
@@ -15,7 +15,7 @@ export const api = {
   },
 
   async getDataset(id: string) {
-    return fetchJSON<Dataset & { cases: unknown[] }>(`/datasets/${id}`);
+    return fetchJSON<DatasetDetail>(`/datasets/${id}`);
   },
 
   async createRun(body: RunRequest): Promise<{ run_id: string }> {
@@ -24,6 +24,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
     return res.json();
   },
 

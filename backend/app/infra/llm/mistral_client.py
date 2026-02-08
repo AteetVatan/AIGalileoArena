@@ -1,5 +1,3 @@
-"""Mistral client with Pydantic validate + retry."""
-
 from __future__ import annotations
 
 import asyncio
@@ -41,9 +39,7 @@ class MistralClient:
                         model=self.model_name,
                         messages=[{"role": "user", "content": prompt}],
                         temperature=temperature,
-                        response_format=(
-                            {"type": "json_object"} if json_schema else None
-                        ),
+                        response_format={"type": "json_object"} if json_schema else None,
                     ),
                     timeout=timeout,
                 )
@@ -52,28 +48,20 @@ class MistralClient:
 
                 cost = 0.0
                 if resp.usage:
-                    cost = self._estimate_cost(
-                        resp.usage.prompt_tokens, resp.usage.completion_tokens
-                    )
+                    cost = self._estimate_cost(resp.usage.prompt_tokens, resp.usage.completion_tokens)
 
                 if json_schema:
                     json.loads(content)
 
-                return LLMResponse(
-                    text=content, latency_ms=latency, cost_estimate=cost
-                )
-            except (json.JSONDecodeError, asyncio.TimeoutError, Exception) as exc:
+                return LLMResponse(text=content, latency_ms=latency, cost_estimate=cost)
+            except Exception as exc:
                 last_err = exc
                 wait = min(2 ** attempt, 8)
-                logger.warning(
-                    "Mistral attempt %d/%d failed: %s", attempt, retries, exc
-                )
+                logger.warning("Mistral attempt %d/%d failed: %s", attempt, retries, exc)
                 if attempt < retries:
                     await asyncio.sleep(wait)
 
-        raise RuntimeError(
-            f"Mistral call failed after {retries} retries: {last_err}"
-        ) from last_err
+        raise RuntimeError(f"Mistral call failed after {retries} retries: {last_err}") from last_err
 
     def _estimate_cost(self, input_tokens: int, output_tokens: int) -> float:
         inp = (input_tokens / 1_000_000) * self.PRICING[0]

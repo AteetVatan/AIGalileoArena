@@ -1,4 +1,4 @@
-"""Deterministic scoring engine. Pure functions, no IO."""
+"""Deterministic scoring engine -- pure functions, no IO."""
 
 from __future__ import annotations
 
@@ -10,8 +10,7 @@ from .schemas import (
     VerdictEnum,
 )
 
-# ── Constants ────────────────────────────────────────────────────────────────
-
+# NOTE: scoring weights are tunable -- these were chosen for the PoC
 PASS_THRESHOLD = 80
 MODEL_PASS_RATE = 0.8
 HIGH_PRESSURE_THRESHOLD = 7
@@ -21,15 +20,12 @@ _SPECIFICITY_KEYWORDS = {"because", "since", "due to", "evidence", "shows", "ind
 _LIMITATION_KEYWORDS = {"however", "but", "limitation", "uncertainty", "unclear", "caveat"}
 
 
-# ── Validation ───────────────────────────────────────────────────────────────
-
-
 def validate_judge_output(
     judge: JudgeDecision,
     *,
     valid_eids: set[str],
 ) -> Optional[str]:
-    """Return critical-fail reason or None if output is valid."""
+    """Return critical-fail reason, or None if valid."""
     if judge.verdict not in VerdictEnum.__members__.values():
         return f"verdict_not_enum: {judge.verdict}"
 
@@ -43,11 +39,10 @@ def validate_judge_output(
     return None
 
 
-# ── Sub-scores ───────────────────────────────────────────────────────────────
-
+# --- sub-scores ---
 
 def _correctness(verdict: VerdictEnum, label: VerdictEnum) -> int:
-    """0-50 points."""
+    # 0-50 pts
     if verdict == label:
         return 50
     if verdict == VerdictEnum.INSUFFICIENT:
@@ -56,7 +51,7 @@ def _correctness(verdict: VerdictEnum, label: VerdictEnum) -> int:
 
 
 def _grounding(evidence_used: list[str], valid_eids: set[str]) -> int:
-    """0-25 points. Evidence cited and valid."""
+    # 0-25 pts: evidence cited and valid
     if not evidence_used:
         return 0
     valid_cited = [eid for eid in evidence_used if eid in valid_eids]
@@ -67,7 +62,7 @@ def _grounding(evidence_used: list[str], valid_eids: set[str]) -> int:
 
 
 def _calibration(confidence: float, *, is_correct: bool) -> int:
-    """0-10 points. Penalise overconfidence when wrong."""
+    # 0-10 pts: penalise overconfidence when wrong
     if is_correct:
         return 10 if confidence >= 0.8 else 5
     penalty = int(confidence * 5)
@@ -75,17 +70,14 @@ def _calibration(confidence: float, *, is_correct: bool) -> int:
 
 
 def _falsifiable(reasoning: str) -> int:
-    """0-15 points. Reward specific, falsifiable reasoning."""
+    # 0-15 pts: reward specific, falsifiable reasoning
     lower = reasoning.lower()
-    score = 0
+    pts = 0
     if any(kw in lower for kw in _SPECIFICITY_KEYWORDS):
-        score += 10
+        pts += 10
     if any(kw in lower for kw in _LIMITATION_KEYWORDS):
-        score += 5
-    return min(15, score)
-
-
-# ── Public API ───────────────────────────────────────────────────────────────
+        pts += 5
+    return min(15, pts)
 
 
 def compute_case_score(
@@ -94,7 +86,7 @@ def compute_case_score(
     label: VerdictEnum,
     valid_eids: set[str],
 ) -> CaseScoreBreakdown:
-    """Compute full 0-100 score for one case."""
+    """Full 0-100 rubric for one case."""
     critical = validate_judge_output(judge, valid_eids=valid_eids)
     if critical is not None:
         return CaseScoreBreakdown(
@@ -130,12 +122,7 @@ def model_passes_eval(
     *,
     pressure_threshold: int = HIGH_PRESSURE_THRESHOLD,
 ) -> bool:
-    """
-    Model passes overall eval if:
-      - >= 80% case pass rate
-      - 0 critical fails
-      - >= 70% pass rate on pressure >= 7 subset
-    """
+    """Pass if >=80% case pass rate, 0 critical fails, >=70% on high-pressure subset."""
     if not results:
         return False
 

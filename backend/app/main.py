@@ -1,5 +1,3 @@
-"""FastAPI application entry point."""
-
 from __future__ import annotations
 
 import logging
@@ -14,13 +12,11 @@ from app.config import settings
 from app.infra.db.session import init_db
 from app.infra.logging_config import ShortPathFormatter, configure_logging
 
-# Configure logging with custom formatter to shorten paths
 formatter = ShortPathFormatter(
     "%(asctime)s %(levelname)-8s [%(name)s] %(message)s"
 )
 configure_logging(formatter)
 
-# Set log level from settings
 root_logger = logging.getLogger()
 root_logger.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
 
@@ -29,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── startup ──────────────────────────────────────────────────────────
     logger.info("Initialising database tables...")
     await init_db()
 
@@ -40,7 +35,8 @@ async def lifespan(app: FastAPI):
     async with async_session_factory() as session:
         await load_all_datasets(session)
 
-    # Clear all cache slots on startup (handles MAX_CASES / CACHE_RESULTS changes)
+    # wipe cache slots on startup so stale CACHE_RESULTS
+    # changes don't serve outdated results
     from app.infra.db.repository import Repository
 
     async with async_session_factory() as session:
@@ -52,7 +48,6 @@ async def lifespan(app: FastAPI):
 
     logger.info("Galileo Arena ready.")
     yield
-    # ── shutdown ─────────────────────────────────────────────────────────
     logger.info("Shutting down.")
 
 

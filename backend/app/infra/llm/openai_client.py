@@ -1,5 +1,3 @@
-"""OpenAI client – extends compatible base with Structured Outputs."""
-
 from __future__ import annotations
 
 import json
@@ -21,12 +19,9 @@ class OpenAIClient(OpenAICompatibleClient):
     PRICING = OPENAI_GPT4O_PRICING
 
     async def _call(
-        self,
-        prompt: str,
-        *,
+        self, prompt: str, *,
         json_schema: Optional[dict[str, Any]],
-        temperature: float,
-        timeout: int,
+        temperature: float, timeout: int,
     ) -> LLMResponse:
         kwargs: dict[str, Any] = {
             "model": self.model_name,
@@ -35,7 +30,6 @@ class OpenAIClient(OpenAICompatibleClient):
             "timeout": timeout,
         }
 
-        # Use strict structured outputs when schema provided
         if json_schema:
             kwargs["response_format"] = {
                 "type": "json_schema",
@@ -54,6 +48,6 @@ class OpenAIClient(OpenAICompatibleClient):
         cost = self._estimate_cost(resp.usage)
 
         if json_schema:
-            json.loads(content)  # sanity check even with strict mode
+            json.loads(content)
 
         return LLMResponse(text=content, latency_ms=latency, cost_estimate=cost)

@@ -1,7 +1,4 @@
-"""Shared base for OpenAI-compatible APIs (OpenAI, DeepSeek, Grok).
-
-Subclasses only override BASE_URL and optionally cost multipliers.
-"""
+"""Base for OpenAI-compatible APIs (OpenAI, DeepSeek, Grok)."""
 
 from __future__ import annotations
 
@@ -20,16 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAICompatibleClient:
-    """Works with any OpenAI-API-compatible endpoint."""
 
     BASE_URL: str = "https://api.openai.com/v1"
-    PRICING: tuple[float, float] = DEFAULT_PRICING  # $/M input, $/M output
+    PRICING: tuple[float, float] = DEFAULT_PRICING
 
     def __init__(self, *, api_key: str, model_name: str) -> None:
         self.model_name = model_name
         self._client = AsyncOpenAI(api_key=api_key, base_url=self.BASE_URL)
-
-    # ── public interface ─────────────────────────────────────────────────
 
     async def complete(
         self,
@@ -44,35 +38,23 @@ class OpenAICompatibleClient:
         for attempt in range(1, retries + 1):
             try:
                 return await self._call(
-                    prompt,
-                    json_schema=json_schema,
-                    temperature=temperature,
-                    timeout=timeout,
+                    prompt, json_schema=json_schema,
+                    temperature=temperature, timeout=timeout,
                 )
             except (APIError, RateLimitError, asyncio.TimeoutError) as exc:
                 last_err = exc
                 wait = min(2 ** attempt, 8)
                 logger.warning(
                     "LLM attempt %d/%d failed (%s), retrying in %ds",
-                    attempt,
-                    retries,
-                    exc,
-                    wait,
+                    attempt, retries, exc, wait,
                 )
                 await asyncio.sleep(wait)
-        raise RuntimeError(
-            f"LLM call failed after {retries} retries: {last_err}"
-        ) from last_err
-
-    # ── internal ─────────────────────────────────────────────────────────
+        raise RuntimeError(f"LLM call failed after {retries} retries: {last_err}") from last_err
 
     async def _call(
-        self,
-        prompt: str,
-        *,
+        self, prompt: str, *,
         json_schema: Optional[dict[str, Any]],
-        temperature: float,
-        timeout: int,
+        temperature: float, timeout: int,
     ) -> LLMResponse:
         kwargs: dict[str, Any] = {
             "model": self.model_name,
@@ -90,9 +72,8 @@ class OpenAICompatibleClient:
         content = resp.choices[0].message.content or ""
         cost = self._estimate_cost(resp.usage)
 
-        # validate JSON if schema requested
         if json_schema:
-            json.loads(content)  # will raise if invalid
+            json.loads(content)
 
         return LLMResponse(text=content, latency_ms=latency, cost_estimate=cost)
 

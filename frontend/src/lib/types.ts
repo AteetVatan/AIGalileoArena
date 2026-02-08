@@ -26,6 +26,14 @@ export interface Evidence {
   date: string;
 }
 
+export interface DatasetDetail {
+  id: string;
+  version: string;
+  description: string;
+  meta: Record<string, unknown>;
+  cases: DatasetCase[];
+}
+
 export interface ModelConfig {
   provider: string;
   model_name: string;
@@ -34,6 +42,7 @@ export interface ModelConfig {
 
 export interface RunRequest {
   dataset_id: string;
+  case_id: string;
   models: ModelConfig[];
   mode: string;
 }
@@ -41,6 +50,7 @@ export interface RunRequest {
 export interface RunInfo {
   run_id: string;
   dataset_id: string;
+  case_id: string;
   status: RunStatus;
   models: { provider: string; model_name: string }[];
   created_at: string;
@@ -88,6 +98,8 @@ export interface AgentMessage {
   role: string;
   model_key: string;
   content: string;
+  phase?: string; // 'independent', 'cross_exam', 'revision', 'dispute', 'judge'
+  round?: number; // Round number for context
   created_at?: string;
 }
 
@@ -96,4 +108,101 @@ export interface SSEEvent {
   event_type: string;
   payload: Record<string, unknown>;
   timestamp: string;
+}
+
+// Debate message schemas
+
+// Phase 1: Proposals
+export interface Proposal {
+  proposed_verdict: string;
+  evidence_used: string[];
+  key_points: string[];
+  uncertainties?: string[];
+  what_would_change_my_mind?: string[];
+}
+
+// Phase 2: Cross-exam
+export interface Question {
+  to: string;
+  q: string;
+  evidence_refs: string[];
+}
+
+export interface QuestionsMessage {
+  questions: Question[];
+}
+
+export interface Answer {
+  q: string;
+  a: string;
+  evidence_refs: string[];
+  admission: string;
+}
+
+export interface AnswersMessage {
+  answers: Answer[];
+}
+
+// Phase 3: Revision
+export interface Revision {
+  final_proposed_verdict: string;
+  evidence_used: string[];
+  what_i_changed: string[];
+  remaining_disagreements: string[];
+  confidence: number;
+}
+
+// Phase 3.5: Dispute
+export interface DisputeQuestion {
+  q: string;
+  evidence_refs: string[];
+}
+
+export interface DisputeQuestionsMessage {
+  questions: DisputeQuestion[];
+}
+
+export interface DisputeAnswer {
+  q: string;
+  a: string;
+  evidence_refs: string[];
+  admission: string;
+}
+
+export interface DisputeAnswersMessage {
+  answers: DisputeAnswer[];
+}
+
+// Phase 4: Judge
+export interface JudgeDecision {
+  verdict: string;
+  confidence: number;
+  evidence_used: string[];
+  reasoning: string;
+}
+
+// Union type for all possible structured messages
+export type StructuredMessage =
+  | Proposal
+  | QuestionsMessage
+  | AnswersMessage
+  | Revision
+  | DisputeQuestionsMessage
+  | DisputeAnswersMessage
+  | JudgeDecision;
+
+export type MessageType =
+  | "proposal"
+  | "questions"
+  | "answers"
+  | "revision"
+  | "dispute_questions"
+  | "dispute_answers"
+  | "judge_decision"
+  | "unknown";
+
+export interface ParsedMessage {
+  type: MessageType;
+  data: StructuredMessage;
+  isTruncated: boolean;
 }

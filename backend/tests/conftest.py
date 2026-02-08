@@ -1,5 +1,3 @@
-"""Shared test fixtures."""
-
 import pytest
 
 from app.core.domain.schemas import JudgeDecision, VerdictEnum

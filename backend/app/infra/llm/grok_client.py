@@ -1,5 +1,3 @@
-"""Grok (xAI) client – OpenAI-compatible, different base URL."""
-
 from .costs import GROK_2_PRICING
 from .openai_compatible import OpenAICompatibleClient
 

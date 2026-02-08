@@ -16,11 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class EventBus:
-    """Singleton-ish event bus for SSE streaming.
-
-    Subscribers get an asyncio.Queue per run_id.
-    Events are also persisted to run_events via the repo.
-    """
+    """Per-run subscriber queues + SSE streaming."""
 
     def __init__(self) -> None:
         self._subscribers: dict[str, list[asyncio.Queue]] = defaultdict(list)
@@ -30,13 +26,7 @@ class EventBus:
         self._seq_counters[run_id] += 1
         return self._seq_counters[run_id]
 
-    async def emit(
-        self,
-        run_id: str,
-        event_type: str,
-        payload: dict[str, Any],
-    ) -> int:
-        """Publish event to all subscribers. Returns seq number."""
+    async def emit(self, run_id: str, event_type: str, payload: dict[str, Any]) -> int:
         seq = self.next_seq(run_id)
         event = {
             "seq": seq,
@@ -44,17 +34,14 @@ class EventBus:
             "payload": payload,
             "timestamp": datetime.utcnow().isoformat(),
         }
-
         for queue in self._subscribers.get(run_id, []):
             try:
                 queue.put_nowait(event)
             except asyncio.QueueFull:
                 logger.warning("SSE queue full for run %s, dropping event", run_id)
-
         return seq
 
     def subscribe(self, run_id: str) -> asyncio.Queue:
-        """Create a new subscriber queue for a run."""
         queue: asyncio.Queue = asyncio.Queue(maxsize=500)
         self._subscribers[run_id].append(queue)
         return queue
@@ -65,23 +52,16 @@ class EventBus:
             subs.remove(queue)
 
     async def stream(
-        self,
-        run_id: str,
-        *,
-        heartbeat_seconds: int = 15,
+        self, run_id: str, *, heartbeat_seconds: int = 15,
     ) -> AsyncGenerator[str, None]:
-        """Yield SSE-formatted strings for a subscriber."""
         queue = self.subscribe(run_id)
         try:
             while True:
                 try:
-                    event = await asyncio.wait_for(
-                        queue.get(), timeout=heartbeat_seconds
-                    )
+                    event = await asyncio.wait_for(queue.get(), timeout=heartbeat_seconds)
                     yield f"data: {json.dumps(event)}\n\n"
                 except asyncio.TimeoutError:
-                    # send heartbeat to keep connection alive
-                    yield f": heartbeat\n\n"
+                    yield ": heartbeat\n\n"
         except asyncio.CancelledError:
             pass
         finally:
@@ -92,24 +72,12 @@ class EventBus:
 event_bus = EventBus()
 
 
+# emit + persist in one shot (used by usecases)
 async def emit_and_persist(
-    bus: EventBus,
-    repo: Repository,
-    run_id: str,
-    event_type: str,
-    payload: dict[str, Any],
+    bus: EventBus, repo: "Repository",
+    run_id: str, event_type: str, payload: dict[str, Any],
 ) -> int:
-    """Emit an SSE event and persist it to run_events in one step.
-
-    Used by both RunEvalUsecase and ReplayCachedUsecase to avoid
-    duplicating the emit+store+commit pattern.
-    """
     seq = await bus.emit(run_id, event_type, payload)
-    await repo.add_event(
-        run_id=run_id,
-        seq=seq,
-        event_type=event_type,
-        payload_json=payload,
-    )
+    await repo.add_event(run_id=run_id, seq=seq, event_type=event_type, payload_json=payload)
     await repo.commit()
     return seq

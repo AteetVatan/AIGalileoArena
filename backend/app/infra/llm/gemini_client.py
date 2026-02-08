@@ -1,5 +1,3 @@
-"""Google Gemini client via google-genai SDK."""
-
 from __future__ import annotations
 
 import asyncio
@@ -33,17 +31,14 @@ class GeminiClient:
         retries: int = 3,
     ) -> LLMResponse:
         if json_schema:
-            prompt += (
-                "\n\nRespond ONLY with valid JSON matching the schema. "
-                "No extra text."
-            )
+            prompt += "\n\nRespond ONLY with valid JSON matching the schema. No extra text."
 
         last_err: Exception | None = None
         for attempt in range(1, retries + 1):
             try:
                 t0 = time.perf_counter()
 
-                # google-genai uses sync API; run in executor
+                # google-genai is sync; run in executor
                 resp = await asyncio.wait_for(
                     asyncio.get_event_loop().run_in_executor(
                         None,
@@ -52,11 +47,7 @@ class GeminiClient:
                             contents=prompt,
                             config={
                                 "temperature": temperature,
-                                "response_mime_type": (
-                                    "application/json"
-                                    if json_schema
-                                    else "text/plain"
-                                ),
+                                "response_mime_type": "application/json" if json_schema else "text/plain",
                             },
                         ),
                     ),
@@ -65,24 +56,18 @@ class GeminiClient:
                 latency = int((time.perf_counter() - t0) * 1000)
                 content = resp.text or ""
 
-                # rough cost estimate – Gemini doesn't always return token counts
+                # rough estimate -- Gemini doesn't always return token counts
                 cost = 0.0001
 
                 if json_schema:
                     json.loads(content)
 
-                return LLMResponse(
-                    text=content, latency_ms=latency, cost_estimate=cost
-                )
-            except (json.JSONDecodeError, asyncio.TimeoutError, Exception) as exc:
+                return LLMResponse(text=content, latency_ms=latency, cost_estimate=cost)
+            except Exception as exc:
                 last_err = exc
                 wait = min(2 ** attempt, 8)
-                logger.warning(
-                    "Gemini attempt %d/%d failed: %s", attempt, retries, exc
-                )
+                logger.warning("Gemini attempt %d/%d failed: %s", attempt, retries, exc)
                 if attempt < retries:
                     await asyncio.sleep(wait)
 
-        raise RuntimeError(
-            f"Gemini call failed after {retries} retries: {last_err}"
-        ) from last_err
+        raise RuntimeError(f"Gemini call failed after {retries} retries: {last_err}") from last_err

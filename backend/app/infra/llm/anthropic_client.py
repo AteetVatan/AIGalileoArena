@@ -1,5 +1,3 @@
-"""Anthropic (Claude) client with Pydantic validate + retry."""
-
 from __future__ import annotations
 
 import asyncio
@@ -53,28 +51,20 @@ class AnthropicClient:
                 latency = int((time.perf_counter() - t0) * 1000)
                 content = resp.content[0].text
 
-                cost = self._estimate_cost(
-                    resp.usage.input_tokens, resp.usage.output_tokens
-                )
+                cost = self._estimate_cost(resp.usage.input_tokens, resp.usage.output_tokens)
 
                 if json_schema:
-                    json.loads(content)  # validate
+                    json.loads(content)
 
-                return LLMResponse(
-                    text=content, latency_ms=latency, cost_estimate=cost
-                )
-            except (json.JSONDecodeError, asyncio.TimeoutError, Exception) as exc:
+                return LLMResponse(text=content, latency_ms=latency, cost_estimate=cost)
+            except Exception as exc:
                 last_err = exc
                 wait = min(2 ** attempt, 8)
-                logger.warning(
-                    "Anthropic attempt %d/%d failed: %s", attempt, retries, exc
-                )
+                logger.warning("Anthropic attempt %d/%d failed: %s", attempt, retries, exc)
                 if attempt < retries:
                     await asyncio.sleep(wait)
 
-        raise RuntimeError(
-            f"Anthropic call failed after {retries} retries: {last_err}"
-        ) from last_err
+        raise RuntimeError(f"Anthropic call failed after {retries} retries: {last_err}") from last_err
 
     def _estimate_cost(self, input_tokens: int, output_tokens: int) -> float:
         inp = (input_tokens / 1_000_000) * self.PRICING[0]

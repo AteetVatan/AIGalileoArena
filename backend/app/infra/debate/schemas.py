@@ -1,8 +1,4 @@
-"""Pydantic v2 models for intermediate multi-turn debate structures.
-
-These are infra-only schemas used between debate phases.
-The final Judge output still uses the core JudgeDecision schema.
-"""
+"""Infra-only schemas used between debate phases (final judge uses core JudgeDecision)."""
 
 from __future__ import annotations
 
@@ -13,9 +9,6 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.core.domain.schemas import DebateRole, VerdictEnum
-
-
-# ── Phase Enum ────────────────────────────────────────────────────────────────
 
 
 class DebatePhase(str, Enum):
@@ -44,26 +37,19 @@ class LogMessageType(str, Enum):
     ANSWERS = "answers"
 
 
-# ── Keep Literals for Pydantic field validation (backed by enums) ─────────
-
+# keep Literals for Pydantic field validation (backed by enums above)
 VERDICT_LITERAL = Literal["SUPPORTED", "REFUTED", "INSUFFICIENT"]
 ADMISSION_LITERAL = Literal["none", "insufficient", "uncertain"]
 TARGET_LITERAL = Literal["Heretic", "Orthodox", "Both"]
-
-
-# ── Fallback message constants ────────────────────────────────────────────
 
 FALLBACK_QUESTION = "Unable to generate question"
 FALLBACK_ANSWER = "Unable to generate answer"
 FALLBACK_JUDGE_REASONING = "Failed to parse judge output"
 
 
-# ── Phase 1: Independent Proposals ───────────────────────────────────────────
-
+# --- phase 1: proposals ---
 
 class Proposal(BaseModel):
-    """Structured proposal from each debater in Phase 1."""
-
     proposed_verdict: VERDICT_LITERAL
     evidence_used: list[str] = Field(min_length=0)
     key_points: list[str] = Field(min_length=1)
@@ -71,26 +57,19 @@ class Proposal(BaseModel):
     what_would_change_my_mind: list[str] = Field(default_factory=list)
 
 
-# ── Phase 2: Cross-Examination ───────────────────────────────────────────────
-
+# --- phase 2: cross-exam ---
 
 class Question(BaseModel):
-    """Single cross-exam question."""
-
     to: TARGET_LITERAL
     q: str
     evidence_refs: list[str] = Field(default_factory=list)
 
 
 class QuestionsMessage(BaseModel):
-    """Wrapper for a list of cross-exam questions (exactly 2)."""
-
     questions: list[Question] = Field(min_length=1, max_length=2)
 
 
 class Answer(BaseModel):
-    """Single cross-exam answer."""
-
     q: str
     a: str
     evidence_refs: list[str] = Field(default_factory=list)
@@ -98,17 +77,12 @@ class Answer(BaseModel):
 
 
 class AnswersMessage(BaseModel):
-    """Wrapper for a list of cross-exam answers."""
-
     answers: list[Answer] = Field(min_length=1, max_length=2)
 
 
-# ── Phase 3: Revision ────────────────────────────────────────────────────────
-
+# --- phase 3: revision ---
 
 class Revision(BaseModel):
-    """Revised stance after seeing cross-examination results."""
-
     final_proposed_verdict: VERDICT_LITERAL
     evidence_used: list[str] = Field(min_length=0)
     what_i_changed: list[str] = Field(default_factory=list)
@@ -116,25 +90,18 @@ class Revision(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
-# ── Phase 3.5: Dispute Resolver ──────────────────────────────────────────────
-
+# --- phase 3.5: dispute ---
 
 class DisputeQuestion(BaseModel):
-    """Single decisive question from Skeptic in dispute phase."""
-
     q: str
     evidence_refs: list[str] = Field(default_factory=list)
 
 
 class DisputeQuestionsMessage(BaseModel):
-    """Skeptic's final decisive question(s)."""
-
     questions: list[DisputeQuestion] = Field(min_length=1, max_length=1)
 
 
 class DisputeAnswer(BaseModel):
-    """Answer to dispute question."""
-
     q: str
     a: str
     evidence_refs: list[str] = Field(default_factory=list)
@@ -142,43 +109,32 @@ class DisputeAnswer(BaseModel):
 
 
 class DisputeAnswersMessage(BaseModel):
-    """Answers to dispute question."""
-
     answers: list[DisputeAnswer] = Field(min_length=1, max_length=1)
 
 
-# ── Shared Memo (deterministic, no LLM call) ────────────────────────────────
-
+# --- shared memo (deterministic, no LLM) ---
 
 @dataclass
 class SharedMemo:
-    """Deterministic context built from parsed debate objects."""
-
     all_evidence_cited: set[str]
     verdicts_by_role: dict[str, str]
     contested_points: list[str]
 
     def to_context_str(self) -> str:
-        """Render as short context block for prompts."""
         lines = [
             "=== Shared Memo ===",
             f"Evidence cited so far: {sorted(self.all_evidence_cited)}",
             f"Current verdicts: {self.verdicts_by_role}",
         ]
         if self.contested_points:
-            lines.append(
-                f"Contested points: {self.contested_points[:5]}"
-            )
+            lines.append(f"Contested points: {self.contested_points[:5]}")
         return "\n".join(lines)
 
 
-# ── Callback Event Dataclasses ───────────────────────────────────────────────
-
+# --- callback events ---
 
 @dataclass(frozen=True)
 class MessageEvent:
-    """Emitted per agent message for persistence + SSE."""
-
     case_id: str
     role: str
     content: str
@@ -188,7 +144,5 @@ class MessageEvent:
 
 @dataclass(frozen=True)
 class PhaseEvent:
-    """Emitted when a debate phase starts."""
-
     case_id: str
     phase: str

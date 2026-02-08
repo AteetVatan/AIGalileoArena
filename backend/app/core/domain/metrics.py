@@ -1,4 +1,4 @@
-"""Metrics computation. Pure functions over result lists."""
+"""Per-model metrics aggregation -- pure functions over result dicts."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from .schemas import ModelMetrics
 from .scoring import model_passes_eval
 
 
+# Aggregate a flat list of case result dicts into a ModelMetrics summary.
 def compute_model_metrics(
     model_key: str,
     results: list[dict],
 ) -> ModelMetrics:
-    """Aggregate per-model metrics from a list of case result dicts."""
     if not results:
         return ModelMetrics(model_key=model_key)
 

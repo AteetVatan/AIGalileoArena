@@ -1,5 +1,3 @@
-"""FastAPI dependency helpers."""
-
 from __future__ import annotations
 
 from typing import AsyncGenerator

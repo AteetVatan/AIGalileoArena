@@ -1,4 +1,4 @@
-"""LLM client factory – resolve provider string to concrete client."""
+"""Resolve provider string -> concrete LLM client."""
 
 from __future__ import annotations
 
@@ -38,25 +38,15 @@ def get_llm_client(
     model_name: str,
     api_key_env: str | None = None,
 ) -> BaseLLMClient:
-    """Instantiate the right LLM client for *provider*."""
     provider_lower = provider.lower()
     cls = _PROVIDERS.get(provider_lower)
     if cls is None:
-        raise ValueError(
-            f"Unknown provider '{provider}'. "
-            f"Supported: {', '.join(_PROVIDERS)}"
-        )
+        raise ValueError(f"Unknown provider '{provider}'. Supported: {', '.join(_PROVIDERS)}")
 
-    # resolve API key: explicit env-var name override or default from _KEY_MAP
-    attr = (
-        api_key_env.lower() if api_key_env else _KEY_MAP.get(provider_lower, "")
-    )
+    attr = api_key_env.lower() if api_key_env else _KEY_MAP.get(provider_lower, "")
     api_key = getattr(settings, attr, "") or ""
 
     if not api_key:
-        raise ValueError(
-            f"No API key found for provider '{provider}'. "
-            f"Set {attr.upper()} in your .env file."
-        )
+        raise ValueError(f"No API key for '{provider}'. Set {attr.upper()} in .env")
 
     return cls(api_key=api_key, model_name=model_name)  # type: ignore[call-arg]

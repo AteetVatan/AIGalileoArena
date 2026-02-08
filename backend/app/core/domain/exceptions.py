@@ -1,8 +1,8 @@
-"""Domain exception hierarchy. Catch specific, re-raise with context."""
+"""Domain exceptions -- catch specific, re-raise with context."""
 
 
 class GalileoError(Exception):
-    """Base for all domain errors."""
+    """Root for all domain errors."""
 
 
 class DatasetNotFoundError(GalileoError):
@@ -25,7 +25,7 @@ class CaseNotFoundError(GalileoError):
 
 
 class JudgeOutputError(GalileoError):
-    """Critical fail: judge produced invalid output."""
+    """Judge produced invalid / unparseable output."""
 
     def __init__(self, reason: str) -> None:
         super().__init__(f"Judge output error: {reason}")

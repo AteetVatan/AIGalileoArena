@@ -1,5 +1,3 @@
-"""Async SQLAlchemy engine and session factory."""
-
 from __future__ import annotations
 
 from typing import AsyncGenerator
@@ -27,7 +25,6 @@ async_session_factory = async_sessionmaker(
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """Yield a session and ensure it closes after use."""
     async with async_session_factory() as session:
         try:
             yield session
@@ -36,7 +33,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Create all tables (dev convenience; use Alembic for production)."""
+    # dev convenience -- use alembic in prod
     from .models import Base
 
     async with engine.begin() as conn:

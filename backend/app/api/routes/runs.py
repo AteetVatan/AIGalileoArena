@@ -1,5 +1,3 @@
-"""Run API routes – create, status, summary, cases, events (SSE)."""
-
 from __future__ import annotations
 
 import asyncio
@@ -24,46 +22,31 @@ router = APIRouter(prefix="/runs", tags=["runs"])
 _log = logging.getLogger(__name__)
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
-
-
-async def _compute_total_cost(
-    session: AsyncSession,
-    run_id: str,
-) -> float:
-    """Compute total accumulated LLM cost for a run across all models and cases."""
+async def _compute_total_cost(session: AsyncSession, run_id: str) -> float:
     repo = Repository(session)
     results = await repo.get_run_results(run_id)
-    total = sum(float(r.cost_estimate) for r in results)
-    return round(total, 6)
+    return round(sum(float(r.cost_estimate) for r in results), 6)
 
 
 async def _try_cache_slot(
     repo: Repository,
     dataset_id: str,
     models: list[dict],
+    case_id: str,
 ) -> Optional[str]:
-    """Check if a valid cache slot exists. Returns source_run_id or None.
-
-    Only activates when STORE_RESULT=true and exactly 1 model is selected.
-    """
-    if not settings.store_result:
-        return None
-    if len(models) != 1:
+    """Only fires when STORE_RESULT=true and exactly 1 model is selected.
+    Returns source_run_id or None."""
+    if not settings.store_result or len(models) != 1:
         return None
 
     model_key = f"{models[0]['provider']}/{models[0]['model_name']}"
-    slot = await repo.get_next_cache_slot_to_serve(dataset_id, model_key)
+    slot = await repo.get_next_cache_slot_to_serve(dataset_id, model_key, case_id)
     if slot is None:
         return None
 
-    # Validate the source run still exists and is completed
     source_run = await repo.get_run(slot.source_run_id)
     if source_run is None or source_run.status != RunStatus.COMPLETED:
-        _log.warning(
-            "Cache slot %d invalid (source=%s), skipping",
-            slot.slot_number, slot.source_run_id,
-        )
+        _log.warning("cache slot %d stale (source=%s), skipping", slot.slot_number, slot.source_run_id)
         return None
 
     await repo.mark_slot_served(slot.id)
@@ -71,8 +54,37 @@ async def _try_cache_slot(
     return slot.source_run_id
 
 
-# ── POST /runs ───────────────────────────────────────────────────────────────
+async def _prepare_run(
+    repo: Repository,
+    body: RunRequest,
+) -> tuple[str, list[dict], Optional[str]]:
+    """Shared prep for both POST endpoints: validate dataset + case, create run
+    row, check cache.  Returns (run_id, models_dicts, source_run_id_or_none)."""
+    ds = await repo.get_dataset(body.dataset_id)
+    if ds is None:
+        raise HTTPException(404, "Dataset not found")
 
+    case_row = await repo.get_dataset_case(body.dataset_id, body.case_id)
+    if case_row is None:
+        raise HTTPException(404, "Case not found in dataset")
+
+    models = [m.model_dump() for m in body.models]
+    run_id = str(uuid.uuid4())
+    models_json = [{"provider": m["provider"], "model_name": m["model_name"]} for m in models]
+
+    await repo.create_run(
+        run_id=run_id,
+        dataset_id=body.dataset_id,
+        case_id=body.case_id,
+        models_json=models_json,
+    )
+    await repo.commit()
+
+    source_run_id = await _try_cache_slot(repo, body.dataset_id, models, body.case_id)
+    return run_id, models, source_run_id
+
+
+# --- POST /runs ---
 
 @router.post("")
 async def create_run(
@@ -80,56 +92,25 @@ async def create_run(
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
 ):
-    """Start a new evaluation run (async background task)."""
     from app.infra.db.session import async_session_factory
 
     repo = Repository(session)
-    ds = await repo.get_dataset(body.dataset_id)
-    if ds is None:
-        raise HTTPException(404, "Dataset not found")
-
-    models = [m.model_dump() for m in body.models]
-    effective_max_cases = settings.max_cases  # override frontend value
-
-    run_id = str(uuid.uuid4())
-    models_json = [
-        {"provider": m["provider"], "model_name": m["model_name"]}
-        for m in models
-    ]
-    await repo.create_run(
-        run_id=run_id,
-        dataset_id=body.dataset_id,
-        models_json=models_json,
-        max_cases=effective_max_cases,
-    )
-    await repo.commit()
-
-    # ── Check cache ──────────────────────────────────────────────────
-    source_run_id = await _try_cache_slot(repo, body.dataset_id, models)
+    run_id, models, source_run_id = await _prepare_run(repo, body)
 
     if source_run_id is not None:
-        # Replay cached result
-        _log.info(
-            "Cache HIT: run_id=%s replaying source=%s", run_id, source_run_id,
-        )
+        _log.info("Cache HIT: run_id=%s replaying source=%s", run_id, source_run_id)
 
         async def _replay():
             async with async_session_factory() as bg_session:
-                uc = ReplayCachedUsecase(
-                    bg_session, event_bus,
-                    run_id=run_id,
-                    source_run_id=source_run_id,
-                )
+                uc = ReplayCachedUsecase(bg_session, event_bus, run_id=run_id, source_run_id=source_run_id)
                 await uc.execute()
 
         background_tasks.add_task(_replay)
     else:
-        # Normal LLM path
         _log.info(
-            "Cache MISS: run_id=%s, dataset=%s, models=%s, max_cases=%s",
-            run_id, body.dataset_id,
+            "Cache MISS: run_id=%s, dataset=%s, case=%s, models=%s",
+            run_id, body.dataset_id, body.case_id,
             [m.get("model_name") for m in models],
-            effective_max_cases,
         )
 
         async def _run():
@@ -138,16 +119,13 @@ async def create_run(
                     uc = RunEvalUsecase(bg_session, event_bus)
                     await uc.execute(
                         dataset_id=body.dataset_id,
+                        case_id=body.case_id,
                         models=models,
-                        max_cases=effective_max_cases,
                         run_id=run_id,
                     )
-                    _log.info("Background task completed: run_id=%s", run_id)
+                    _log.info("Background task done: run_id=%s", run_id)
             except Exception as exc:
-                _log.exception(
-                    "Background task failed: run_id=%s error=%s",
-                    run_id, exc,
-                )
+                _log.exception("Background task blew up: run_id=%s error=%s", run_id, exc)
                 raise
 
         background_tasks.add_task(_run)
@@ -161,63 +139,32 @@ async def create_run(
     }
 
 
-# ── POST /runs/start ────────────────────────────────────────────────────────
-
+# --- POST /runs/start ---
 
 @router.post("/start")
 async def start_run_sync(
     body: RunRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    """Start run and return immediately with run_id (background execution)."""
     from app.infra.db.session import async_session_factory
 
     repo = Repository(session)
-    ds = await repo.get_dataset(body.dataset_id)
-    if ds is None:
-        raise HTTPException(404, "Dataset not found")
-
-    models = [m.model_dump() for m in body.models]
-    effective_max_cases = settings.max_cases
-
-    # Pre-create run record so we can return run_id immediately
-    run_id = str(uuid.uuid4())
-    models_json = [
-        {"provider": m["provider"], "model_name": m["model_name"]}
-        for m in models
-    ]
-    await repo.create_run(
-        run_id=run_id,
-        dataset_id=body.dataset_id,
-        models_json=models_json,
-        max_cases=effective_max_cases,
-    )
-    await repo.commit()
-
-    # ── Check cache ──────────────────────────────────────────────────
-    source_run_id = await _try_cache_slot(repo, body.dataset_id, models)
+    run_id, models, source_run_id = await _prepare_run(repo, body)
 
     if source_run_id is not None:
-        _log.info(
-            "Cache HIT: run_id=%s replaying source=%s", run_id, source_run_id,
-        )
+        _log.info("Cache HIT: run_id=%s replaying source=%s", run_id, source_run_id)
 
         async def _replay():
             async with async_session_factory() as bg_session:
-                uc = ReplayCachedUsecase(
-                    bg_session, event_bus,
-                    run_id=run_id,
-                    source_run_id=source_run_id,
-                )
+                uc = ReplayCachedUsecase(bg_session, event_bus, run_id=run_id, source_run_id=source_run_id)
                 await uc.execute()
 
         asyncio.create_task(_replay())
     else:
         _log.info(
-            "Cache MISS: run_id=%s, dataset=%s, models=%s, max_cases=%s",
-            run_id, body.dataset_id,
+            "Cache MISS: run_id=%s, dataset=%s, case=%s, models=%s",
+            run_id, body.dataset_id, body.case_id,
             [m.get("model_name") for m in models],
-            effective_max_cases,
         )
 
         async def _run():
@@ -225,8 +172,8 @@ async def start_run_sync(
                 uc = RunEvalUsecase(bg_session, event_bus)
                 await uc.execute(
                     dataset_id=body.dataset_id,
+                    case_id=body.case_id,
                     models=models,
-                    max_cases=effective_max_cases,
                     run_id=run_id,
                 )
 
@@ -240,8 +187,7 @@ async def start_run_sync(
     }
 
 
-# ── GET endpoints (unchanged) ───────────────────────────────────────────────
-
+# --- GET endpoints ---
 
 @router.get("/{run_id}")
 async def get_run(
@@ -258,7 +204,7 @@ async def get_run(
         "dataset_id": run.dataset_id,
         "status": run.status,
         "models": run.models_json,
-        "max_cases": run.max_cases,
+        "case_id": run.case_id,
         "created_at": run.created_at.isoformat(),
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,
         "total_llm_cost": total_cost,
@@ -273,10 +219,10 @@ async def get_run_summary(
 ):
     summary = await compute_run_summary(session, run_id)
     total_cost = await _compute_total_cost(session, run_id)
-    result = summary.model_dump()
-    result["total_llm_cost"] = total_cost
-    result["debug_mode"] = settings.debug_mode
-    return result
+    out = summary.model_dump()
+    out["total_llm_cost"] = total_cost
+    out["debug_mode"] = settings.debug_mode
+    return out
 
 
 @router.get("/{run_id}/cases")
@@ -368,7 +314,6 @@ async def get_case_replay(
 
 @router.get("/{run_id}/events")
 async def stream_events(run_id: str):
-    """SSE endpoint – streams live events for a run."""
     return StreamingResponse(
         event_bus.stream(run_id),
         media_type="text/event-stream",
