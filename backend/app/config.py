@@ -108,6 +108,20 @@ class Settings(BaseSettings):
         description="NLI entailment threshold above which refusal penalty is applied",
     )
 
+    # --- AutoGen debate mode ---
+    use_autogen_debate: bool = Field(
+        default=False,
+        description="Use AutoGen-powered debate orchestration instead of FSM controller",
+    )
+    autogen_max_cross_exam_messages: int = Field(
+        default=2, ge=1, le=20,
+        description="Max agent turns in AutoGen cross-examination phase",
+    )
+    autogen_enable_tools: bool = Field(
+        default=False,
+        description="Enable evidence retrieval tools for AutoGen debate agents",
+    )
+
     @property
     def debug_mode(self) -> bool:
         return self.log_level.upper() == "DEBUG"

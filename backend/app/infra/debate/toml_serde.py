@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import re
 import tomllib
 from typing import Any
 
 import tomli_w
+
+from app.core.domain.schemas import VerdictEnum
 
 _FENCE_RE = re.compile(r"```(?:toml)?\s*\n(.*?)```", re.DOTALL)
 
@@ -91,3 +94,40 @@ def _looks_like_toml(text: str) -> bool:
     if first.startswith("["):
         return True
     return bool(re.match(r'^[A-Za-z_][A-Za-z0-9_]*\s*=', first))
+
+
+# --- judge output parsing (shared between FSM and AutoGen controllers) ---
+
+_FALLBACK_JUDGE_REASONING = "Failed to parse judge output"
+
+
+def fallback_judge() -> dict[str, Any]:
+    """Return a safe fallback judge verdict dict."""
+    return {
+        "verdict": VerdictEnum.INSUFFICIENT.value,
+        "confidence": 0.0,
+        "evidence_used": [],
+        "reasoning": _FALLBACK_JUDGE_REASONING,
+    }
+
+
+def parse_judge_output(text: str) -> dict[str, Any]:
+    """Parse judge output from TOML or JSON, with fallback."""
+    # try TOML first
+    try:
+        return toml_to_dict(text)
+    except ValueError:
+        pass
+
+    # JSON fallback
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start != -1 and end > start:
+            try:
+                return json.loads(text[start:end])
+            except json.JSONDecodeError:
+                return fallback_judge()
+        return fallback_judge()

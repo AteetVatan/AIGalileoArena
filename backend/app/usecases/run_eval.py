@@ -142,7 +142,24 @@ class RunEvalUsecase:
                 model_name=model_cfg["model_name"],
                 api_key_env=model_cfg.get("api_key_env"),
             )
-            controller = DebateController(llm, model_key)
+
+            if settings.use_autogen_debate:
+                from app.infra.llm.autogen_model_client import GalileoModelClient
+                from app.infra.debate.autogen_debate_flow import AutoGenDebateController
+
+                autogen_client = GalileoModelClient(
+                    llm,
+                    model_name=model_cfg["model_name"],
+                    provider=model_cfg["provider"],
+                    enable_function_calling=settings.autogen_enable_tools,
+                )
+                controller = AutoGenDebateController(
+                    autogen_client, model_key,
+                    max_cross_exam_messages=settings.autogen_max_cross_exam_messages,
+                    enable_tools=settings.autogen_enable_tools,
+                )
+            else:
+                controller = DebateController(llm, model_key)
 
             async def on_msg(evt: MessageEvent) -> None:
                 await self._repo.add_message(

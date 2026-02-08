@@ -63,6 +63,9 @@ class GeminiClient:
                     json.loads(content)
 
                 return LLMResponse(text=content, latency_ms=latency, cost_estimate=cost)
+            except asyncio.CancelledError:
+                # Never swallow cancellation — let it propagate immediately.
+                raise
             except Exception as exc:
                 last_err = exc
                 wait = min(2 ** attempt, 8)

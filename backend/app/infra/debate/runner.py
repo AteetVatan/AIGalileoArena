@@ -14,7 +14,6 @@ import asyncio
 import json
 import logging
 import time
-from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -39,7 +38,9 @@ from .prompts import (
 from .schemas import (
     AdmissionLevel,
     AnswersMessage,
+    DebateMessage,
     DebatePhase,
+    DebateResult,
     DebateTarget,
     DisputeAnswersMessage,
     DisputeQuestionsMessage,
@@ -48,37 +49,19 @@ from .schemas import (
     FALLBACK_QUESTION,
     LogMessageType,
     MessageEvent,
+    OnMessageCallback,
+    OnPhaseCallback,
     PhaseEvent,
     Proposal,
     Revision,
     QuestionsMessage,
     SharedMemo,
 )
-from .toml_serde import dict_to_toml, toml_to_dict
+from .toml_serde import dict_to_toml, parse_judge_output, toml_to_dict
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
-
-
-@dataclass
-class DebateMessage:
-    role: str
-    content: str
-    phase: str = ""
-    round: int = 0
-
-
-@dataclass
-class DebateResult:
-    messages: list[DebateMessage] = field(default_factory=list)
-    judge_json: dict[str, Any] = field(default_factory=dict)
-    total_latency_ms: int = 0
-    total_cost: float = 0.0
-
-
-OnMessageCallback = Callable[[MessageEvent], Any]
-OnPhaseCallback = Callable[[PhaseEvent], Any]
 
 DEFAULT_EARLY_STOP_JACCARD = 0.4
 MAX_DISPUTE_STEPS = 1
@@ -422,7 +405,7 @@ class DebateController:
         result.messages.append(DebateMessage(DebateRole.JUDGE, judge_resp.text, DebatePhase.JUDGE, 1))
         await self._emit_msg(on_message, case_id, DebateRole.JUDGE, judge_resp.text, DebatePhase.JUDGE, 1)
 
-        result.judge_json = _parse_judge_output(judge_resp.text)
+        result.judge_json = parse_judge_output(judge_resp.text)
 
     # --- early-stop logic ---
 
@@ -602,34 +585,9 @@ def _build_fallback(schema_cls: type[T]) -> T:
     raise ValueError(f"no fallback for {schema_cls.__name__}")
 
 
-def _parse_judge_output(text: str) -> dict[str, Any]:
-    # try TOML first
-    try:
-        return toml_to_dict(text)
-    except ValueError:
-        pass
 
-    # JSON fallback
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        start = text.find("{")
-        end = text.rfind("}") + 1
-        if start != -1 and end > start:
-            try:
-                return json.loads(text[start:end])
-            except json.JSONDecodeError:
-                return _fallback_judge()
-        return _fallback_judge()
-
-
-def _fallback_judge() -> dict[str, Any]:
-    return {
-        "verdict": VerdictEnum.INSUFFICIENT.value,
-        "confidence": 0.0,
-        "evidence_used": [],
-        "reasoning": FALLBACK_JUDGE_REASONING,
-    }
+# Backward-compatible aliases (deprecated: use toml_serde.parse_judge_output directly)
+_parse_judge_output = parse_judge_output
 
 
 def _safe_content_parse(text: str) -> Any:

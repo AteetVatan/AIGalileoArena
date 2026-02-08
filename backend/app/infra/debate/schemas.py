@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal
+from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, Field
 
@@ -146,3 +146,25 @@ class MessageEvent:
 class PhaseEvent:
     case_id: str
     phase: str
+
+
+# --- debate result types (shared between FSM and AutoGen controllers) ---
+
+@dataclass
+class DebateMessage:
+    role: str
+    content: str
+    phase: str = ""
+    round: int = 0
+
+
+@dataclass
+class DebateResult:
+    messages: list[DebateMessage] = field(default_factory=list)
+    judge_json: dict[str, Any] = field(default_factory=dict)
+    total_latency_ms: int = 0
+    total_cost: float = 0.0
+
+
+OnMessageCallback = Callable[[MessageEvent], Any]
+OnPhaseCallback = Callable[[PhaseEvent], Any]
