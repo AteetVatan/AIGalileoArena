@@ -1,17 +1,20 @@
-"""Async repository for all 7 tables. Thin persistence adapter."""
+"""Async repository for all 8 tables. Thin persistence adapter."""
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import and_, desc, select
+from sqlalchemy import and_, delete, desc, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.domain.schemas import RunStatus
 
 from .models import (
+    CachedResultSetRow,
     DatasetCaseRow,
     DatasetRow,
     RunCaseStatusRow,
@@ -20,6 +23,8 @@ from .models import (
     RunResultRow,
     RunRow,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Repository:
@@ -293,6 +298,148 @@ class Repository:
         )
         result = await self._s.execute(stmt)
         return result.scalar() or 0
+
+    # ── Cached Result Sets ───────────────────────────────────────────────
+
+    async def get_next_cache_slot_to_serve(
+        self,
+        dataset_id: str,
+        model_key: str,
+    ) -> Optional[CachedResultSetRow]:
+        """Return the next valid (non-expired) slot to replay, round-robin."""
+        now = datetime.utcnow()
+        stmt = (
+            select(CachedResultSetRow)
+            .where(
+                and_(
+                    CachedResultSetRow.dataset_id == dataset_id,
+                    CachedResultSetRow.model_key == model_key,
+                    CachedResultSetRow.expires_at > now,
+                )
+            )
+            .order_by(
+                CachedResultSetRow.last_served_at.asc().nulls_first(),
+                CachedResultSetRow.slot_number.asc(),
+            )
+            .limit(1)
+        )
+        result = await self._s.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def mark_slot_served(self, slot_id: int) -> None:
+        stmt = select(CachedResultSetRow).where(
+            CachedResultSetRow.id == slot_id
+        )
+        result = await self._s.execute(stmt)
+        row = result.scalar_one()
+        row.last_served_at = datetime.utcnow()
+        await self._s.flush()
+
+    async def get_next_empty_slot_number(
+        self,
+        dataset_id: str,
+        model_key: str,
+        *,
+        max_slots: int,
+    ) -> Optional[int]:
+        """Return the first slot number in 1..max_slots not occupied by a
+        valid (non-expired) slot, or None if all are full."""
+        now = datetime.utcnow()
+        stmt = (
+            select(CachedResultSetRow.slot_number)
+            .where(
+                and_(
+                    CachedResultSetRow.dataset_id == dataset_id,
+                    CachedResultSetRow.model_key == model_key,
+                    CachedResultSetRow.expires_at > now,
+                )
+            )
+        )
+        result = await self._s.execute(stmt)
+        occupied = {row for row in result.scalars().all()}
+        for n in range(1, max_slots + 1):
+            if n not in occupied:
+                return n
+        return None
+
+    async def create_cache_slot(
+        self,
+        *,
+        dataset_id: str,
+        model_key: str,
+        slot_number: int,
+        source_run_id: str,
+    ) -> bool:
+        """Insert a cache slot. Returns True on success, False on conflict."""
+        from .models import _default_expires_at
+
+        row = CachedResultSetRow(
+            dataset_id=dataset_id,
+            model_key=model_key,
+            slot_number=slot_number,
+            source_run_id=source_run_id,
+            expires_at=_default_expires_at(),
+        )
+        self._s.add(row)
+        try:
+            await self._s.flush()
+            return True
+        except IntegrityError:
+            await self._s.rollback()
+            logger.warning(
+                "Cache slot conflict: dataset=%s model=%s slot=%d",
+                dataset_id, model_key, slot_number,
+            )
+            return False
+
+    async def delete_all_cache_slots(self) -> int:
+        """Delete ALL cache slots (startup cleanup). Returns count deleted."""
+        stmt = delete(CachedResultSetRow)
+        result = await self._s.execute(stmt)
+        await self._s.flush()
+        return result.rowcount  # type: ignore[return-value]
+
+    async def delete_expired_slots(self) -> int:
+        """Delete expired cache slots. Returns count deleted."""
+        now = datetime.utcnow()
+        stmt = delete(CachedResultSetRow).where(
+            CachedResultSetRow.expires_at <= now
+        )
+        result = await self._s.execute(stmt)
+        await self._s.flush()
+        return result.rowcount  # type: ignore[return-value]
+
+    # ── Bulk queries (for replay) ─────────────────────────────────────────
+
+    async def get_all_run_events(self, run_id: str) -> list[RunEventRow]:
+        """All events for a run, ordered by seq (no limit)."""
+        stmt = (
+            select(RunEventRow)
+            .where(RunEventRow.run_id == run_id)
+            .order_by(RunEventRow.seq)
+        )
+        result = await self._s.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_all_run_messages(self, run_id: str) -> list[RunMessageRow]:
+        """All messages for a run, ordered by id."""
+        stmt = (
+            select(RunMessageRow)
+            .where(RunMessageRow.run_id == run_id)
+            .order_by(RunMessageRow.id)
+        )
+        result = await self._s.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_all_run_results(self, run_id: str) -> list[RunResultRow]:
+        """All results for a run, ordered by id."""
+        stmt = (
+            select(RunResultRow)
+            .where(RunResultRow.run_id == run_id)
+            .order_by(RunResultRow.id)
+        )
+        result = await self._s.execute(stmt)
+        return list(result.scalars().all())
 
     # ── Commit helper ────────────────────────────────────────────────────
 

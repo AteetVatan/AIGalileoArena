@@ -7,7 +7,10 @@ import json
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any, AsyncGenerator
+
+if TYPE_CHECKING:
+    from app.infra.db.repository import Repository
 
 logger = logging.getLogger(__name__)
 
@@ -87,3 +90,26 @@ class EventBus:
 
 # module-level singleton
 event_bus = EventBus()
+
+
+async def emit_and_persist(
+    bus: EventBus,
+    repo: Repository,
+    run_id: str,
+    event_type: str,
+    payload: dict[str, Any],
+) -> int:
+    """Emit an SSE event and persist it to run_events in one step.
+
+    Used by both RunEvalUsecase and ReplayCachedUsecase to avoid
+    duplicating the emit+store+commit pattern.
+    """
+    seq = await bus.emit(run_id, event_type, payload)
+    await repo.add_event(
+        run_id=run_id,
+        seq=seq,
+        event_type=event_type,
+        payload_json=payload,
+    )
+    await repo.commit()
+    return seq

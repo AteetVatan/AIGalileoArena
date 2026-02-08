@@ -1,8 +1,8 @@
-"""SQLAlchemy 2.x async ORM models – 7 tables."""
+"""SQLAlchemy 2.x async ORM models – 8 tables."""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy import (
@@ -14,6 +14,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -215,4 +216,44 @@ class RunEventRow(Base):
 
     __table_args__ = (
         Index("ix_re_run_seq", "run_id", "seq"),
+    )
+
+
+# ── cached_result_sets ──────────────────────────────────────────────────────
+
+CACHE_SLOT_TTL = timedelta(hours=24)
+
+
+def _default_expires_at() -> datetime:
+    return datetime.utcnow() + CACHE_SLOT_TTL
+
+
+class CachedResultSetRow(Base):
+    __tablename__ = "cached_result_sets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    dataset_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("datasets.id"), nullable=False
+    )
+    model_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    slot_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_run_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("runs.run_id"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_default_expires_at
+    )
+    last_served_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "dataset_id", "model_key", "slot_number",
+            name="uq_cache_slot",
+        ),
+        Index("ix_cache_dataset_model_exp", "dataset_id", "model_key", "expires_at"),
     )

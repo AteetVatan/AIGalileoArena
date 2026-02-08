@@ -11,12 +11,13 @@ from typing import Any, Optional
 from mistralai import Mistral
 
 from .base import LLMResponse
+from .costs import MISTRAL_LARGE_PRICING
 
 logger = logging.getLogger(__name__)
 
 
 class MistralClient:
-    PRICING = (2.0, 6.0)  # mistral-large per 1M tokens
+    PRICING = MISTRAL_LARGE_PRICING
 
     def __init__(self, *, api_key: str, model_name: str) -> None:
         self.model_name = model_name

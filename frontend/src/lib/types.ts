@@ -35,7 +35,6 @@ export interface ModelConfig {
 export interface RunRequest {
   dataset_id: string;
   models: ModelConfig[];
-  max_cases?: number;
   mode: string;
 }
 
@@ -46,6 +45,8 @@ export interface RunInfo {
   models: { provider: string; model_name: string }[];
   created_at: string;
   finished_at: string | null;
+  total_llm_cost?: number;
+  debug_mode?: boolean;
 }
 
 export interface CaseResult {
@@ -79,6 +80,8 @@ export interface RunSummary {
   status: RunStatus;
   total_cases: number;
   models: ModelMetrics[];
+  total_llm_cost?: number;
+  debug_mode?: boolean;
 }
 
 export interface AgentMessage {

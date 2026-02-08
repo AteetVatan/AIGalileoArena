@@ -14,18 +14,16 @@ from typing import Any, Optional
 from openai import AsyncOpenAI, APIError, RateLimitError
 
 from .base import LLMResponse
+from .costs import DEFAULT_PRICING
 
 logger = logging.getLogger(__name__)
-
-# rough per-token costs (input, output) per 1 M tokens
-_DEFAULT_PRICING = (1.0, 2.0)
 
 
 class OpenAICompatibleClient:
     """Works with any OpenAI-API-compatible endpoint."""
 
     BASE_URL: str = "https://api.openai.com/v1"
-    PRICING: tuple[float, float] = _DEFAULT_PRICING  # $/M input, $/M output
+    PRICING: tuple[float, float] = DEFAULT_PRICING  # $/M input, $/M output
 
     def __init__(self, *, api_key: str, model_name: str) -> None:
         self.model_name = model_name

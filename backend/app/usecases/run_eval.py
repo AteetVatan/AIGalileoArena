@@ -21,7 +21,8 @@ from app.infra.db.repository import Repository
 from app.infra.debate.runner import DebateController
 from app.infra.debate.schemas import FALLBACK_JUDGE_REASONING, MessageEvent, PhaseEvent
 from app.infra.llm.factory import get_llm_client
-from app.infra.sse.event_bus import EventBus
+from app.config import settings
+from app.infra.sse.event_bus import EventBus, emit_and_persist
 
 logger = logging.getLogger(__name__)
 
@@ -44,20 +45,27 @@ class RunEvalUsecase:
         dataset_id: str,
         models: list[dict[str, str]],
         max_cases: Optional[int] = None,
+        run_id: Optional[str] = None,
     ) -> str:
         """Create run, process all cases, return run_id."""
-        run_id = str(uuid.uuid4())
+        if run_id is None:
+            run_id = str(uuid.uuid4())
 
         models_json = [
             {"provider": m["provider"], "model_name": m["model_name"]}
             for m in models
         ]
-        await self._repo.create_run(
-            run_id=run_id,
-            dataset_id=dataset_id,
-            models_json=models_json,
-            max_cases=max_cases,
-        )
+        
+        # Only create run if it doesn't exist (when run_id was provided)
+        existing_run = await self._repo.get_run(run_id)
+        if existing_run is None:
+            await self._repo.create_run(
+                run_id=run_id,
+                dataset_id=dataset_id,
+                models_json=models_json,
+                max_cases=max_cases,
+            )
+        
         await self._repo.update_run_status(run_id, status=RunStatus.RUNNING)
         await self._repo.commit()
 
@@ -103,6 +111,22 @@ class RunEvalUsecase:
                 run_id, status=RunStatus.COMPLETED, finished_at=datetime.utcnow()
             )
             await self._repo.commit()
+
+            # Register cache slot if caching is enabled (single-model only)
+            if settings.store_result and len(models) == 1:
+                mk = f"{models[0]['provider']}/{models[0]['model_name']}"
+                slot_num = await self._repo.get_next_empty_slot_number(
+                    dataset_id, mk, max_slots=settings.cache_results,
+                )
+                if slot_num is not None:
+                    await self._repo.create_cache_slot(
+                        dataset_id=dataset_id,
+                        model_key=mk,
+                        slot_number=slot_num,
+                        source_run_id=run_id,
+                    )
+                    await self._repo.commit()
+
             await self._emit(run_id, EventType.RUN_FINISHED, {"run_id": run_id})
 
         except Exception as exc:
@@ -260,12 +284,6 @@ class RunEvalUsecase:
     async def _emit(
         self, run_id: str, event_type: str, payload: dict
     ) -> None:
-        seq = await self._bus.emit(run_id, event_type, payload)
-        # persist to DB for replay
-        await self._repo.add_event(
-            run_id=run_id,
-            seq=seq,
-            event_type=event_type,
-            payload_json=payload,
+        await emit_and_persist(
+            self._bus, self._repo, run_id, event_type, payload,
         )
-        await self._repo.commit()

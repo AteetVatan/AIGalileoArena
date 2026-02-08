@@ -11,7 +11,6 @@ export default function DatasetsPage() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [selected, setSelected] = useState<string>("");
   const [models, setModels] = useState<Set<string>>(new Set());
-  const [maxCases, setMaxCases] = useState<number | "">("");
   const [launching, setLaunching] = useState(false);
 
   useEffect(() => {
@@ -40,7 +39,6 @@ export default function DatasetsPage() {
       const resp = await api.createRun({
         dataset_id: selected,
         models: modelConfigs,
-        max_cases: maxCases ? Number(maxCases) : undefined,
         mode: "debate",
       });
       if (resp.run_id && resp.run_id !== "starting") {
@@ -101,19 +99,6 @@ export default function DatasetsPage() {
           </div>
 
           <div className="flex items-end gap-4 mt-4">
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">Max cases (optional)</label>
-              <input
-                type="number"
-                min={1}
-                value={maxCases}
-                onChange={(e) =>
-                  setMaxCases(e.target.value ? Number(e.target.value) : "")
-                }
-                className="w-28 bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm"
-                placeholder="All"
-              />
-            </div>
             <button
               onClick={handleLaunch}
               disabled={launching || models.size === 0}

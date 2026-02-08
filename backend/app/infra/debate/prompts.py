@@ -7,9 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.domain.schemas import DebateRole
+from app.core.domain.schemas import DebateRole, VerdictEnum
 
+from .schemas import AdmissionLevel, DebateTarget
 from .toml_serde import dict_to_toml
+
+# ── Derived option strings (single source of truth) ──────────────────────────
+
+_VERDICT_OPTIONS = "|".join(v.value for v in VerdictEnum)
+_ADMISSION_OPTIONS = "|".join(a.value for a in AdmissionLevel)
 
 
 # ── Evidence formatter (unchanged) ───────────────────────────────────────────
@@ -53,7 +59,7 @@ def case_packet_text(
 
 # ── Phase 1: Independent Proposal Prompt ─────────────────────────────────────
 
-_PROPOSAL_SCHEMA_HINT = """proposed_verdict = "SUPPORTED|REFUTED|INSUFFICIENT"
+_PROPOSAL_SCHEMA_HINT = f"""proposed_verdict = "{_VERDICT_OPTIONS}"
 evidence_used = ["E1", "E2"]
 key_points = ["point1", "point2"]
 uncertainties = ["..."]
@@ -129,17 +135,17 @@ to = "<target_role>"
 q = "your question"
 evidence_refs = ["E2"]"""
 
-_ANSWERS_SCHEMA_HINT = """[[answers]]
+_ANSWERS_SCHEMA_HINT = f"""[[answers]]
 q = "the question"
 a = "your answer"
 evidence_refs = ["E1"]
-admission = "none|insufficient|uncertain"
+admission = "{_ADMISSION_OPTIONS}"
 
 [[answers]]
 q = "the question"
 a = "your answer"
 evidence_refs = ["E2"]
-admission = "none"
+admission = "{AdmissionLevel.NONE.value}"
 """
 
 
@@ -183,18 +189,22 @@ def cross_exam_question_skeptic_prompt(
     memo_text: str,
 ) -> str:
     """Skeptic asks BOTH sides gap-hunting questions."""
-    return f"""You are the Skeptic agent questioning both Orthodox and Heretic.
+    _s = DebateRole.SKEPTIC.value
+    _o = DebateRole.ORTHODOX.value
+    _h = DebateRole.HERETIC.value
+    _both = DebateTarget.BOTH.value
+    return f"""You are the {_s} agent questioning both {_o} and {_h}.
 
 {case_packet}
 
-Orthodox proposal:
+{_o} proposal:
 {orthodox_proposal_toml}
-Heretic proposal:
+{_h} proposal:
 {heretic_proposal_toml}
 
 {memo_text}
 
-Ask exactly 2 gap-hunting questions. You may address either Orthodox, Heretic, or Both.
+Ask exactly 2 gap-hunting questions. You may address either {_o}, {_h}, or {_both}.
 Each question MUST reference at least one evidence ID or ask about missing evidence.
 
 Output ONLY valid TOML:
@@ -226,8 +236,9 @@ Questions to answer:
 
 For each question, provide a direct answer. You MUST:
 - Cite evidence IDs in your answer OR explicitly say "INSUFFICIENT evidence in pack"
-- Set "admission" to "insufficient" if you lack evidence, "uncertain" if you're unsure,
-  or "none" if you stand by your position
+- Set "admission" to "{AdmissionLevel.INSUFFICIENT.value}" if you lack evidence, \
+"{AdmissionLevel.UNCERTAIN.value}" if you're unsure,
+  or "{AdmissionLevel.NONE.value}" if you stand by your position
 
 Output ONLY valid TOML:
 {_ANSWERS_SCHEMA_HINT}
@@ -237,7 +248,7 @@ Keep total response under 1200 characters. Return TOML only."""
 
 # ── Phase 3: Revision Prompt ─────────────────────────────────────────────────
 
-_REVISION_SCHEMA_HINT = """final_proposed_verdict = "SUPPORTED|REFUTED|INSUFFICIENT"
+_REVISION_SCHEMA_HINT = f"""final_proposed_verdict = "{_VERDICT_OPTIONS}"
 evidence_used = ["E1", "E4"]
 what_i_changed = ["description of any changes"]
 remaining_disagreements = ["points still contested"]
@@ -280,11 +291,11 @@ _DISPUTE_Q_SCHEMA_HINT = """[[questions]]
 q = "your decisive question"
 evidence_refs = ["E1"]"""
 
-_DISPUTE_A_SCHEMA_HINT = """[[answers]]
+_DISPUTE_A_SCHEMA_HINT = f"""[[answers]]
 q = "the question"
 a = "your answer"
 evidence_refs = ["E1"]
-admission = "none|insufficient|uncertain"
+admission = "{_ADMISSION_OPTIONS}"
 """
 
 
@@ -295,7 +306,8 @@ def dispute_question_prompt(
     memo_text: str,
 ) -> str:
     """Skeptic's final decisive question to resolve remaining disagreement."""
-    return f"""You are the Skeptic. After revision, agents still disagree.
+    _s = DebateRole.SKEPTIC.value
+    return f"""You are the {_s}. After revision, agents still disagree.
 
 {case_packet}
 
@@ -322,7 +334,8 @@ def dispute_answer_prompt(
     memo_text: str,
 ) -> str:
     """Answer to Skeptic's decisive dispute question."""
-    return f"""You are the {answerer} agent answering the Skeptic's final question.
+    _s = DebateRole.SKEPTIC.value
+    return f"""You are the {answerer} agent answering the {_s}'s final question.
 
 {case_packet}
 
@@ -331,7 +344,7 @@ Your revised position:
 
 {memo_text}
 
-Skeptic's question:
+{_s}'s question:
 {dispute_question_toml}
 
 Provide a direct, final answer. Cite evidence or admit insufficiency.
@@ -344,7 +357,7 @@ Keep total response under 800 characters. Return TOML only."""
 
 # ── Phase 4: Judge Prompt (structured input version) ─────────────────────────
 
-_JUDGE_SCHEMA_HINT = """verdict = "SUPPORTED|REFUTED|INSUFFICIENT"
+_JUDGE_SCHEMA_HINT = f"""verdict = "{_VERDICT_OPTIONS}"
 confidence = 0.85
 evidence_used = ["E1", "E2"]
 reasoning = "brief explanation (1-3 sentences)"
@@ -360,7 +373,8 @@ def judge_prompt(
 ) -> str:
     """Judge receives structured TOML debate transcript, not raw prose."""
     debate_block = _debate_transcript_to_toml(structured_debate)
-    return f"""You are the Judge. Render a FINAL verdict on the claim.
+    _j = DebateRole.JUDGE.value
+    return f"""You are the {_j}. Render a FINAL verdict on the claim.
 
 Topic: {topic}
 Claim: {claim}

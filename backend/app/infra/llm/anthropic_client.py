@@ -11,12 +11,13 @@ from typing import Any, Optional
 import anthropic
 
 from .base import LLMResponse
+from .costs import ANTHROPIC_CLAUDE_35_SONNET_PRICING
 
 logger = logging.getLogger(__name__)
 
 
 class AnthropicClient:
-    PRICING = (3.0, 15.0)  # claude-3.5-sonnet per 1M tokens
+    PRICING = ANTHROPIC_CLAUDE_35_SONNET_PRICING
 
     def __init__(self, *, api_key: str, model_name: str) -> None:
         self.model_name = model_name

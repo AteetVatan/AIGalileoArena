@@ -8,6 +8,7 @@ import time
 from typing import Any, Optional
 
 from .base import LLMResponse
+from .costs import OPENAI_GPT4O_PRICING
 from .openai_compatible import OpenAICompatibleClient
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ class OpenAIClient(OpenAICompatibleClient):
     """OpenAI with native Structured Outputs for the Judge role."""
 
     BASE_URL = "https://api.openai.com/v1"
-    PRICING = (2.5, 10.0)  # gpt-4o pricing per 1M tokens
+    PRICING = OPENAI_GPT4O_PRICING
 
     async def _call(
         self,

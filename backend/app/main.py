@@ -40,6 +40,16 @@ async def lifespan(app: FastAPI):
     async with async_session_factory() as session:
         await load_all_datasets(session)
 
+    # Clear all cache slots on startup (handles MAX_CASES / CACHE_RESULTS changes)
+    from app.infra.db.repository import Repository
+
+    async with async_session_factory() as session:
+        repo = Repository(session)
+        deleted = await repo.delete_all_cache_slots()
+        await repo.commit()
+        if deleted:
+            logger.info("Cleared %d cached result slot(s) on startup.", deleted)
+
     logger.info("Galileo Arena ready.")
     yield
     # ── shutdown ─────────────────────────────────────────────────────────

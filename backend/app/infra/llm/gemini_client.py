@@ -11,12 +11,13 @@ from typing import Any, Optional
 from google import genai
 
 from .base import LLMResponse
+from .costs import GEMINI_20_FLASH_PRICING
 
 logger = logging.getLogger(__name__)
 
 
 class GeminiClient:
-    PRICING = (0.075, 0.30)  # gemini-2.0-flash per 1M tokens
+    PRICING = GEMINI_20_FLASH_PRICING
 
     def __init__(self, *, api_key: str, model_name: str) -> None:
         self.model_name = model_name

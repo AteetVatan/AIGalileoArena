@@ -51,5 +51,25 @@ class Settings(BaseSettings):
         description="Logging level from LOG_LEVEL env var",
     )
 
+    # ── Cache / replay settings ───────────────────────────────────────────
+    store_result: bool = Field(
+        default=False,
+        description="Persist LLM results as cache slots and serve from cache when available",
+    )
+    max_cases: Optional[int] = Field(
+        default=None,
+        description="Max dataset cases per run (None = all cases)",
+    )
+    cache_results: int = Field(
+        default=4,
+        ge=1,
+        description="Number of cache slots per (dataset, model) pair",
+    )
+
+    @property
+    def debug_mode(self) -> bool:
+        """Check if backend is running in debug mode (LOG_LEVEL=DEBUG)."""
+        return self.log_level.upper() == "DEBUG"
+
 
 settings = Settings()

@@ -100,6 +100,32 @@ export default function RunDashboard() {
         )}
       </div>
 
+      {/* Debug Info - Only shown when backend is in debug mode */}
+      {(run?.debug_mode ?? summary?.debug_mode ?? false) && (
+        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+          <h2 className="text-sm font-bold text-slate-400 mb-2">Debug Info</h2>
+          <div className="space-y-1 text-xs font-mono">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total LLM Cost:</span>
+              <span className="text-cyan-400">
+                ${(run?.total_llm_cost ?? summary?.total_llm_cost ?? 0).toFixed(6)}
+              </span>
+            </div>
+            {summary?.models && summary.models.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-slate-700">
+                <div className="text-slate-500 mb-1">Per Model Costs:</div>
+                {summary.models.map((model) => (
+                  <div key={model.model_key} className="flex justify-between ml-2">
+                    <span className="text-slate-400">{model.model_key}:</span>
+                    <span className="text-cyan-400">${model.total_cost.toFixed(6)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main grid */}
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
