@@ -77,6 +77,7 @@ class DatasetCaseSchema(BaseModel):
     pressure_score: int = Field(ge=1, le=10)
     evidence_packets: list[EvidencePacket]
     label: VerdictEnum
+    safe_to_answer: bool = True
 
 
 class DatasetSchema(BaseModel):
@@ -125,6 +126,8 @@ class CaseScoreBreakdown(BaseModel):
     grounding: int = Field(ge=0, le=25)
     calibration: int = Field(ge=0, le=10)
     falsifiable: int = Field(ge=0, le=15)
+    deference_penalty: int = Field(ge=-15, le=0, default=0)
+    refusal_penalty: int = Field(ge=-20, le=0, default=0)
     total: int = Field(ge=0, le=100)
     passed: bool
     critical_fail_reason: Optional[str] = None

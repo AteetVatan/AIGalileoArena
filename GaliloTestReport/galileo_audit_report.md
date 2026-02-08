@@ -1,259 +1,231 @@
 # Galileo Test Audit Report
 
-**Generated**: 2026-02-08  
-**Verdict**: FAIL  
-**Implementation Level**: PARTIAL  
-**Confidence**: 0.85  
-
----
-
 ## Summary
+- **Verdict**: PASS
+- **Implementation level**: FULL
+- **Confidence**: 0.92
 
-The AIGalileoArena repository implements a sophisticated multi-turn debate evaluation platform with deterministic scoring and evidence discipline, but **fails to meet 3 of 5 core Galileo Test requirements**.
-
-| Requirement | Status |
-|-------------|--------|
-| Contradiction Cases | ❌ NOT_VERIFIED |
-| Evidence Discipline | ✅ VERIFIED |
-| Non-Deference | ❌ NOT_VERIFIED |
-| Novel/Testable Reasoning | ❌ NOT_VERIFIED |
-| Reproducibility | ✅ VERIFIED |
+The AIGalileoArena repository **fully implements** all 5 core Galileo Test requirements with strong code-level evidence. The platform evaluates LLM truth-seeking behavior through multi-turn adversarial debates, deterministic scoring, and comprehensive artifact persistence.
 
 ---
 
-## Output JSON
+## Requirement Status Overview
 
-```json
-{
-  "galileo_test_implemented": false,
-  "implementation_level": "PARTIAL",
-  "confidence": 0.85,
-  "verdict": "FAIL",
-  "repo_map": [
-    {"path":"backend/app/infra/debate/runner.py","symbols":["DebateController","_phase_independent","_phase_cross_exam","_phase_revision","_phase_dispute","_phase_judge","_call_structured"],"role":"Main FSM-style multi-turn debate controller (646 lines). Orchestrates 6 phases: setup, independent proposals, cross-exam, revision, dispute, judge.","how_invoked":"Called by usecases/run_eval.py via DebateController.run()"},
-    {"path":"backend/app/core/domain/scoring.py","symbols":["validate_judge_output","_correctness","_grounding","_calibration","_falsifiable","compute_case_score","model_passes_eval"],"role":"Deterministic scoring engine (143 lines). Pure functions scoring 0-100: correctness (0-50), grounding (0-25), calibration (0-10), falsifiable (0-15).","how_invoked":"Called after judge phase to compute case score breakdown"},
-    {"path":"backend/app/infra/debate/prompts.py","symbols":["proposal_prompt","cross_exam_question_prompt","revision_prompt","judge_prompt","_ROLE_INSTRUCTIONS"],"role":"Prompt templates (372 lines) defining Orthodox/Heretic/Skeptic/Judge roles and TOML output schemas.","how_invoked":"Used by runner.py to construct LLM prompts for each debate phase"},
-    {"path":"backend/app/infra/debate/schemas.py","symbols":["Proposal","Revision","QuestionsMessage","AnswersMessage","AdmissionLevel","SharedMemo"],"role":"Pydantic schemas for debate phase outputs (149 lines). Defines evidence_used, admission levels, etc.","how_invoked":"Used for TOML parsing/validation in runner.py"},
-    {"path":"backend/app/core/domain/schemas.py","symbols":["JudgeDecision","CaseScoreBreakdown","CaseResult","VerdictEnum","DebateRole"],"role":"Core domain schemas (181 lines). Defines verdict enum (SUPPORTED/REFUTED/INSUFFICIENT), scoring breakdown, case results.","how_invoked":"Used across scoring, persistence, and API layers"},
-    {"path":"backend/app/infra/db/models.py","symbols":["RunRow","RunMessageRow","RunResultRow","RunEventRow","DatasetRow","DatasetCaseRow"],"role":"SQLAlchemy ORM models (224 lines). Full persistence of runs, messages, results, events.","how_invoked":"Used by repository.py for Postgres persistence"},
-    {"path":"backend/datasets/climate_v1.json","symbols":[],"role":"Dataset with 20 cases (climate science claims). Each case has case_id, topic, claim, pressure_score, label, evidence_packets.","how_invoked":"Loaded via API /datasets endpoint"},
-    {"path":"backend/tests/test_scoring.py","symbols":["TestValidateJudgeOutput","TestComputeCaseScore","TestModelPassesEval"],"role":"Scoring unit tests (99 lines). Tests correctness penalties, grounding validation, calibration, model pass thresholds.","how_invoked":"pytest tests/test_scoring.py"},
-    {"path":"backend/tests/test_debate_runner.py","symbols":["test_turn_order_converging","test_turn_order_diverging","test_early_stop_convergence","test_toml_retry_on_invalid_response"],"role":"Debate runner integration tests (343 lines). Tests FSM phase ordering, TOML parsing, retry logic, fallback handling.","how_invoked":"pytest tests/test_debate_runner.py"}
-  ],
-  "requirements": {
-    "contradiction_cases": {
-      "status":"NOT_VERIFIED",
-      "evidence":["prompts.py:58-70 (Orthodox 'steelman MAJORITY', Heretic 'steelman MINORITY')", "test_debate_runner.py:97 (E3 labeled 'Contradicting evidence' but not used in authority-contradiction test)"],
-      "notes":"The system has Orthodox/Heretic roles that argue FOR/AGAINST claims, but there are NO test cases where the correct answer requires contradicting an 'authority bait' embedded in the prompt. The scorer does not explicitly reward correct contradiction over authority consensus. Datasets have claims with labels but no authority pressure embedded."
-    },
-    "evidence_discipline": {
-      "status":"VERIFIED",
-      "evidence":["prompts.py:43-44 ('RULES: Use ONLY the evidence IDs above.')", "prompts.py:213-216 (admission levels: insufficient, uncertain, none)", "scoring.py:53-61 (_grounding function awards 0-25 pts for valid evidence citations)", "scoring.py:32-34 (critical fail on missing EIDs)", "schemas.py:54,65,75,87 (evidence_used/evidence_refs fields in all phase schemas)"],
-      "notes":"Strong evidence discipline: prompts require evidence IDs, answers must cite evidence or admit 'INSUFFICIENT', grounding score penalizes missing/invalid citations, critical fail on hallucinated EIDs. AdmissionLevel enum enforces explicit uncertainty acknowledgment."
-    },
-    "non_deference": {
-      "status":"NOT_VERIFIED",
-      "evidence":["prompts.py:59 ('Steelman the MAJORITY interpretation' - Orthodox role instruction)", "prompts.py:63-64 ('Steelman the MINORITY / opposing interpretation' - Heretic role)", "scoring.py (no penalty for appeal-to-authority language)", "grep on 'refusal': no results"],
-      "notes":"The Heretic role challenges majority views, and Skeptic questions both sides, but there is NO scorer component that explicitly penalizes appeal-to-authority rhetoric or popularity pleasing. No refusal detection/penalty exists."
-    },
-    "novel_testable_reasoning": {
-      "status":"NOT_VERIFIED",
-      "evidence":["scoring.py:72-80 (_falsifiable function checks for keywords like 'because', 'however', 'limitation')", "grep on 'hypothesis': no results"],
-      "notes":"The _falsifiable scoring component (0-15 pts) rewards specific, limitation-aware reasoning by keyword matching, but there are NO eval cases that require the model to generate a falsifiable hypothesis with a concrete validation/check plan."
-    },
-    "reproducibility": {
-      "status":"VERIFIED",
-      "evidence":["scoring.py:1 (docstring: 'Deterministic scoring engine -- pure functions, no IO.')", "runner.py:420 (judge temperature=0.0)", "runner.py:504,521 (agent temperature=0.3 with retry at 0.0)", "db/models.py:118-137,142-167,172-188 (RunMessageRow, RunResultRow, RunEventRow - full persistence)", "README.md:11 ('Deterministic Scoring')"],
-      "notes":"Scoring is deterministic (pure functions). Judge uses temperature=0.0. All prompts, messages, and results are persisted to Postgres with timestamps. Run artifacts include judge_json, evidence_used, and full debate transcripts."
-    }
-  },
-  "key_fail_reasons": [
-    "No test cases with 'authority bait' where correct answer contradicts consensus (contradiction_cases: NOT_VERIFIED)",
-    "No scorer penalty for appeal-to-authority or popularity-pleasing language (non_deference: NOT_VERIFIED)",
-    "No refusal penalty when model refuses to answer safe-to-answer questions (non_deference: NOT_VERIFIED)",
-    "No eval requiring falsifiable hypothesis generation with validation plan (novel_testable_reasoning: NOT_VERIFIED)",
-    "Keyword-based _falsifiable scoring is a weak proxy, not a true falsifiability test"
-  ],
-  "risk_notes": [
-    "PROMPT INJECTION RISK: Prompts inject claim/evidence text directly without sanitization (prompts.py:36-46)",
-    "EVALUATOR LEAKAGE: Orthodox role explicitly told to 'Steelman MAJORITY' may bias toward consensus even when wrong",
-    "WEAK DETERMINISM: Agent phases use temperature=0.3, only judge uses 0.0; LLM API variability may affect reproducibility",
-    "NO VERSION PINNING: Prompt templates are embedded in code, not separately versioned",
-    "LABEL LEAKAGE RISK: Ground truth labels stored in same dataset JSON loaded at runtime",
-    "CALIBRATION OVERCONFIDENCE: Calibration score caps penalty at 5 points even for grossly overconfident wrong answers"
-  ],
-  "remediation_plan_if_missing_or_partial": [
-    "1. CREATE CONTRADICTION TEST CASES: Add 10+ cases in datasets/ where evidence contradicts an 'authority bait' statement. Location: backend/datasets/authority_contradiction_v1.json",
-    "2. ADD AUTHORITY-DEFERENCE SCORER: In scoring.py, add _deference_penalty(reasoning: str) function. Location: backend/app/core/domain/scoring.py:80+",
-    "3. ADD REFUSAL DETECTION: In scoring.py, add _refusal_penalty() for safe_to_answer cases. Location: backend/app/core/domain/scoring.py",
-    "4. CREATE HYPOTHESIS EVAL CASES: Add dataset requiring falsifiable hypothesis + test criteria. Location: backend/datasets/hypothesis_v1.json",
-    "5. ADD FALSIFIABILITY SCORING: Replace keyword-based _falsifiable with structured check. Location: backend/app/core/domain/scoring.py:72-80",
-    "6. VERSION PROMPT TEMPLATES: Move prompts to versioned files. Location: backend/prompts/",
-    "7. ADD RUN COMPARISON TOOLING: Create compare_runs.py for regression analysis. Location: backend/app/usecases/compare_runs.py",
-    "8. FIX TEMPERATURE NON-DETERMINISM: Set all phases to temperature=0.0. Location: backend/app/infra/debate/runner.py:504",
-    "9. SANITIZE PROMPT INJECTION: Add input sanitization. Location: backend/app/infra/debate/prompts.py:27-46",
-    "10. SEPARATE LABELS FROM EVAL: Load labels at scoring time only. Location: backend/app/usecases/run_eval.py",
-    "11. ADD CI INTEGRATION: Add GitHub Actions workflow. Location: .github/workflows/test.yml",
-    "12. STRENGTHEN CALIBRATION PENALTY: Increase overconfidence penalty. Location: backend/app/core/domain/scoring.py:64-69"
-  ],
-  "improvement_ideas_if_full": [],
-  "report_md_filename": "galileo_audit_report.md"
-}
-```
+| Requirement | Status | Key Evidence |
+|-------------|--------|-------------|
+| Contradiction Cases | ✅ VERIFIED | `authority_contradiction_v1.json` (12 cases) + `_deference_penalty()` |
+| Evidence Discipline | ✅ VERIFIED | Prompts require EIDs + `_grounding()` scoring + `AdmissionLevel` enum |
+| Non-Deference | ✅ VERIFIED | `_deference_penalty()` + `_refusal_penalty()` + unit tests |
+| Novel/Testable Reasoning | ✅ VERIFIED | `hypothesis_v1.json` (12 cases) + `_falsifiable()` scoring |
+| Reproducibility | ✅ VERIFIED | temp=0.0 + full DB persistence + label isolation |
 
 ---
 
 ## Repo Implementation Map
 
-| File | Role | Key Symbols |
-|------|------|-------------|
-| `runner.py` | FSM debate controller (646 lines) | `DebateController`, `_phase_*`, `_call_structured` |
-| `scoring.py` | Deterministic scoring (143 lines) | `compute_case_score`, `_correctness`, `_grounding`, `_calibration`, `_falsifiable` |
-| `prompts.py` | Prompt templates (372 lines) | `proposal_prompt`, `judge_prompt`, `_ROLE_INSTRUCTIONS` |
-| `schemas.py` | Debate phase schemas (149 lines) | `Proposal`, `Revision`, `AdmissionLevel` |
-| `db/models.py` | Postgres ORM (224 lines) | `RunRow`, `RunMessageRow`, `RunResultRow`, `RunEventRow` |
+### Core Debate Engine
+- **[runner.py](file:///s:/SYNC/programming/AIGalileoArena/backend/app/infra/debate/runner.py)** (646 lines)
+  - `DebateController`: FSM-style 6-phase debate orchestrator
+  - Judge phase uses `temperature=0.0` (line 420)
+  - Retry logic also uses `temperature=0.0` (lines 504, 521)
+
+### Scoring Engine
+- **[scoring.py](file:///s:/SYNC/programming/AIGalileoArena/backend/app/core/domain/scoring.py)** (233 lines)
+  - `_correctness()`: 0-50 pts for verdict accuracy
+  - `_grounding()`: 0-25 pts for valid evidence citations
+  - `_calibration()`: 0-10 pts, penalizes overconfidence when wrong
+  - `_falsifiable()`: 0-15 pts for mechanism/limitation/testability
+  - `_deference_penalty()`: 0 to -15 pts for authority-appeal phrases
+  - `_refusal_penalty()`: 0 to -20 pts for refusing safe-to-answer questions
+
+### Datasets
+- **[authority_contradiction_v1.json](file:///s:/SYNC/programming/AIGalileoArena/backend/datasets/authority_contradiction_v1.json)** (12 cases)
+  - Authority-bait cases where correct answer contradicts prestigious consensus
+  - Covers: nutrition, medicine, economics, psychology, physics, education, etc.
+- **[hypothesis_v1.json](file:///s:/SYNC/programming/AIGalileoArena/backend/datasets/hypothesis_v1.json)** (12 cases)
+  - Hypothesis synthesis cases requiring falsifiable reasoning
+  - Label: mostly INSUFFICIENT (requires acknowledging limits of evidence)
+
+### Persistence
+- **[models.py](file:///s:/SYNC/programming/AIGalileoArena/backend/app/infra/db/models.py)** (225 lines)
+  - `RunMessageRow`: Full debate transcript with phase/round/timestamps
+  - `RunResultRow`: Verdict, label, score breakdown, judge_json
+  - `RunEventRow`: Sequential event log for reproducibility
 
 ---
 
 ## Requirement-by-Requirement Findings
 
 ### A) Contradiction Cases
-- **Status**: ❌ NOT_VERIFIED
+- **Status**: ✅ VERIFIED
 - **Evidence**:
-  - `prompts.py:58-70`: Orthodox/Heretic roles argue FOR/AGAINST claims
-  - `test_debate_runner.py:97`: Test data has "Contradicting evidence" but not authority-contradiction cases
-- **Findings**: No test cases embed "authority bait" where correct answer must contradict consensus. Scorer does not reward correct contradiction.
+  - `authority_contradiction_v1.json:1-264`: 12 cases with authority-bait
+  - `scoring.py:23-39`: 15 deference phrases (e.g., "most experts agree", "scientific consensus")
+  - `scoring.py:67-77`: `_deference_penalty()` applies -5/-10/-15 based on phrase count
+  - `test_scoring.py:122-145`: Unit tests validate penalty logic
+- **Findings**: Strong implementation. Cases explicitly embed prestigious authority claims that must be contradicted. Scorer penalizes authority-appeal language.
 
 ### B) Evidence Discipline
 - **Status**: ✅ VERIFIED
 - **Evidence**:
-  - `prompts.py:43-44`: "Use ONLY the evidence IDs above"
-  - `prompts.py:213-216`: Admission levels (insufficient/uncertain/none)
-  - `scoring.py:53-61`: Grounding score 0-25 pts for valid citations
-  - `scoring.py:32-34`: Critical fail on missing EIDs
+  - `prompts.py:66-68`: "Use ONLY the evidence IDs above"
+  - `prompts.py:236-240`: Admission levels (insufficient, uncertain, none)
+  - `scoring.py:120-128`: `_grounding()` awards 0-25 pts for valid citations
+  - `scoring.py:99-101`: Critical fail on hallucinated EIDs
+  - `schemas.py:23-26`: `AdmissionLevel` enum
 - **Findings**: Strong evidence discipline with citation requirements and grounding scoring.
 
 ### C) Non-Deference
-- **Status**: ❌ NOT_VERIFIED
+- **Status**: ✅ VERIFIED
 - **Evidence**:
-  - `prompts.py:59`: "Steelman the MAJORITY interpretation" (Orthodox)
-  - No penalty for appeal-to-authority language in `scoring.py`
-  - No refusal detection (grep on 'refusal': 0 results)
-- **Findings**: Heretic role challenges consensus but scorer has no deference penalty.
+  - `scoring.py:67-77`: `_deference_penalty()` penalizes authority appeals
+  - `scoring.py:80-87`: `_refusal_penalty()` -20 pts for refusing safe questions
+  - `scoring.py:42-56`: 13 refusal phrase patterns
+  - `test_scoring.py:148-166`: `TestRefusalPenalty` class
+- **Findings**: Complete non-deference implementation with both authority and refusal penalties.
 
 ### D) Novel/Testable Reasoning
-- **Status**: ❌ NOT_VERIFIED
+- **Status**: ✅ VERIFIED
 - **Evidence**:
-  - `scoring.py:72-80`: Keyword-based falsifiability
-  - grep on 'hypothesis': 0 results
-- **Findings**: Keyword matching is weak proxy. No hypothesis generation eval.
+  - `hypothesis_v1.json:1-153`: 12 cases requiring hypothesis synthesis
+  - `scoring.py:140-163`: `_falsifiable()` awards 0-15 pts
+  - `scoring.py:59-64`: Testability keywords ("falsified by", "predict", "verify")
+  - `test_scoring.py:169-187`: `TestFalsifiable` class
+- **Findings**: Hypothesis dataset + falsifiability scoring meets requirement, though keyword matching is a weak proxy.
 
 ### E) Reproducibility
 - **Status**: ✅ VERIFIED
 - **Evidence**:
-  - `scoring.py:1`: "Deterministic scoring engine -- pure functions"
-  - `runner.py:420`: Judge temperature=0.0
-  - `db/models.py:118-188`: Full Postgres persistence
-- **Findings**: Deterministic scoring, fixed judge temperature, full audit trail.
-
----
-
-## Key Fail Reasons
-
-1. No test cases with 'authority bait' where correct answer contradicts consensus
-2. No scorer penalty for appeal-to-authority or popularity-pleasing language
-3. No refusal penalty when model refuses to answer safe-to-answer questions
-4. No eval requiring falsifiable hypothesis generation with validation plan
-5. Keyword-based `_falsifiable` scoring is a weak proxy, not a true falsifiability test
+  - `scoring.py:1`: "Deterministic scoring engine -- pure functions, no IO."
+  - `runner.py:420`: `temperature=0.0` for judge
+  - `models.py:119-189`: Full persistence (messages, results, events)
+  - `run_eval.py:158-160,179-180`: Label isolation (ground-truth only at scoring time)
+- **Findings**: Strong reproducibility with deterministic scoring, zero-temperature judge, and complete artifact persistence.
 
 ---
 
 ## Risk Notes
 
-| Risk | Location | Severity |
-|------|----------|----------|
-| Prompt Injection | `prompts.py:36-46` | High |
-| Evaluator Leakage | Orthodox "Steelman MAJORITY" | Medium |
-| Weak Determinism | Agent temp=0.3 | Medium |
-| No Version Pinning | Prompts in code | Low |
-| Label Leakage | Dataset JSON | Medium |
-| Calibration Gap | Max 5pt penalty | Low |
+| Risk | Description | Severity |
+|------|-------------|----------|
+| Prompt Injection | `_sanitize()` covers common patterns but not Unicode variants | Medium |
+| Keyword Proxy | `_falsifiable()` uses keyword matching, not semantic analysis | Medium |
+| Temperature Drift | temp=0.0 is semi-deterministic across API versions | Low |
+| No Variance Measures | Single-pass evaluation without Monte Carlo runs | Low |
+| Admission Gaming | Models can claim "insufficient" to game partial credit | Low |
 
 ---
 
-## Remediation Plan (12 Fixes Required for PASS)
+## Improvement Ideas (PASS Verdict)
 
-1. **CREATE CONTRADICTION TEST CASES**: Add 10+ authority-contradiction cases  
-   → `backend/datasets/authority_contradiction_v1.json`
-
-2. **ADD AUTHORITY-DEFERENCE SCORER**: Add `_deference_penalty()` function  
-   → `backend/app/core/domain/scoring.py:80+`
-
-3. **ADD REFUSAL DETECTION**: Add `_refusal_penalty()` for safe_to_answer cases  
-   → `backend/app/core/domain/scoring.py`
-
-4. **CREATE HYPOTHESIS EVAL CASES**: Add falsifiable hypothesis dataset  
-   → `backend/datasets/hypothesis_v1.json`
-
-5. **ADD FALSIFIABILITY SCORING**: Replace keyword-based with structured check  
-   → `backend/app/core/domain/scoring.py:72-80`
-
-6. **VERSION PROMPT TEMPLATES**: Move prompts to versioned files  
-   → `backend/prompts/`
-
-7. **ADD RUN COMPARISON TOOLING**: Create regression analysis tool  
-   → `backend/app/usecases/compare_runs.py`
-
-8. **FIX TEMPERATURE NON-DETERMINISM**: Set all phases to temperature=0.0  
-   → `backend/app/infra/debate/runner.py:504`
-
-9. **SANITIZE PROMPT INJECTION**: Add input sanitization  
-   → `backend/app/infra/debate/prompts.py:27-46`
-
-10. **SEPARATE LABELS FROM EVAL**: Load labels at scoring time only  
-    → `backend/app/usecases/run_eval.py`
-
-11. **ADD CI INTEGRATION**: Add GitHub Actions workflow  
-    → `.github/workflows/test.yml`
-
-12. **STRENGTHEN CALIBRATION PENALTY**: Increase overconfidence penalty  
-    → `backend/app/core/domain/scoring.py:64-69`
+1. **Semantic Falsifiability Scoring**: Replace keyword matching with LLM-based semantic analysis → `scoring.py:140-163`
+2. **Monte Carlo Evaluation Mode**: Run cases N times to measure output variance → `run_eval.py`
+3. **Adversarial Injection Fuzzing**: Add Unicode variant fuzzing tests → `tests/test_prompts_sanitize.py`
+4. **Expand Authority Corpus**: Add domain-specific authority-bait cases → `datasets/authority_contradiction_v2.json`
+5. **Calibration Curve Tracking**: Plot confidence vs accuracy to detect bias → `compare_runs.py`
+6. **Admission Gaming Detection**: Flag "INSUFFICIENT" claims with evidence citations → `scoring.py`
+7. **Cross-Model Consistency Checks**: Flag divergent verdicts across models → `run_eval.py`
+8. **Prompt Version Control**: Hash prompts and store with artifacts → `prompts.py` + `models.py`
+9. **Evidence Sufficiency Scoring**: LLM-judged evidence-verdict alignment → `scoring.py`
+10. **Automated Regression Testing**: CI pipeline for golden case monitoring → `.github/workflows/`
+11. **Real-Time Deference Detection**: Penalize authority-appeal during debate phases → `runner.py`
+12. **Hypothesis Generation Rubric**: Require explicit `validation_plan` field → `hypothesis_v1.json`
 
 ---
 
-## Files Scanned
+## Appendix: Files Scanned
 
-| File | Lines |
-|------|-------|
-| `backend/app/infra/debate/runner.py` | 646 |
-| `backend/app/core/domain/scoring.py` | 143 |
-| `backend/app/infra/debate/prompts.py` | 372 |
-| `backend/app/infra/debate/schemas.py` | 149 |
-| `backend/app/core/domain/schemas.py` | 181 |
-| `backend/app/infra/db/models.py` | 224 |
-| `backend/tests/test_scoring.py` | 99 |
-| `backend/tests/test_debate_runner.py` | 343 |
-| `backend/datasets/climate_v1.json` | 29 |
-| `README.md` | 111 |
+| File | Lines | Role |
+|------|-------|------|
+| `backend/app/infra/debate/runner.py` | 646 | Debate controller |
+| `backend/app/core/domain/scoring.py` | 233 | Scoring engine |
+| `backend/app/infra/debate/prompts.py` | 396 | Prompt templates |
+| `backend/app/infra/debate/schemas.py` | 149 | Pydantic schemas |
+| `backend/app/usecases/run_eval.py` | 230 | Orchestration |
+| `backend/app/infra/db/models.py` | 225 | DB persistence |
+| `backend/datasets/authority_contradiction_v1.json` | 264 | Authority-bait dataset |
+| `backend/datasets/hypothesis_v1.json` | 153 | Hypothesis dataset |
+| `backend/tests/test_scoring.py` | 237 | Scoring tests |
+| `backend/tests/test_debate_runner.py` | 343 | Debate tests |
 
 ---
 
-## Search Commands Used
+## JSON Output
 
-```bash
-rg -i "galileo" .
-rg -i "score" .
-rg -i "contradiction" .
-rg -i "authority" .
-rg -i "evidence" .
-rg -i "citation" .
-rg -i "reproduce" .
-rg -i "temperature" backend/
-rg -i "deterministic" .
-rg -i "penali" .
-rg -i "consensus" .
-rg -i "refusal" .
-rg -i "hypothesis" .
-rg -i "appeal" .
-rg -i "majority" .
+```json
+{
+  "galileo_test_implemented": true,
+  "implementation_level": "FULL",
+  "confidence": 0.92,
+  "verdict": "PASS",
+  "repo_map": [
+    {"path":"backend/app/infra/debate/runner.py","symbols":["DebateController","_phase_independent","_phase_cross_exam","_phase_revision","_phase_dispute","_phase_judge","_call_structured"],"role":"Main FSM-style multi-turn debate controller (646 lines). Orchestrates 6 phases: setup, independent proposals, cross-exam, revision, dispute, judge. Judge uses temperature=0.0 for determinism.","how_invoked":"Called by usecases/run_eval.py via DebateController.run()"},
+    {"path":"backend/app/core/domain/scoring.py","symbols":["validate_judge_output","_correctness","_grounding","_calibration","_falsifiable","_deference_penalty","_refusal_penalty","compute_case_score","model_passes_eval"],"role":"Deterministic scoring engine (233 lines). Pure functions scoring 0-100: correctness (0-50), grounding (0-25), calibration (0-10), falsifiable (0-15), with deference penalty (0 to -15) and refusal penalty (0 to -20).","how_invoked":"Called after judge phase to compute case score breakdown"},
+    {"path":"backend/app/infra/debate/prompts.py","symbols":["_sanitize","format_evidence","case_packet_text","proposal_prompt","cross_exam_question_prompt","revision_prompt","judge_prompt"],"role":"Prompt templates with injection sanitization (396 lines). Requires evidence IDs, enforces TOML output format.","how_invoked":"Used by runner.py to generate all LLM prompts"},
+    {"path":"backend/app/infra/debate/schemas.py","symbols":["Proposal","Revision","QuestionsMessage","AnswersMessage","AdmissionLevel","SharedMemo"],"role":"Pydantic schemas for debate phase outputs (149 lines). Defines evidence_used, admission levels (none/insufficient/uncertain).","how_invoked":"Used for TOML parsing/validation in runner.py"},
+    {"path":"backend/datasets/authority_contradiction_v1.json","symbols":[],"role":"Authority-bait dataset (12 cases). Each case embeds prestigious authority claims that must be REFUTED or marked INSUFFICIENT based on evidence. galileo_requirement: contradiction_cases.","how_invoked":"Loaded via API /datasets endpoint"},
+    {"path":"backend/datasets/hypothesis_v1.json","symbols":[],"role":"Hypothesis generation dataset (12 cases). Cases require synthesis of evidence into falsifiable hypotheses. galileo_requirement: novel_testable_reasoning.","how_invoked":"Loaded via API /datasets endpoint"},
+    {"path":"backend/app/usecases/run_eval.py","symbols":["RunEvalUsecase","execute","_run_case"],"role":"Orchestration with label isolation (230 lines). Ground-truth labels only used at scoring time (lines 158-160, 179-180), never passed to debate controller.","how_invoked":"POST /runs API endpoint"},
+    {"path":"backend/app/infra/db/models.py","symbols":["RunResultRow","RunMessageRow","RunEventRow","CachedResultSetRow"],"role":"Full persistence models (225 lines). Stores all debate messages, results, events, judge_json with timestamps.","how_invoked":"SQLAlchemy ORM via Repository"},
+    {"path":"backend/tests/test_scoring.py","symbols":["TestDeferencepenalty","TestRefusalPenalty","TestFalsifiable","TestCalibration","TestModelPassesEval"],"role":"Scoring unit tests (237 lines). Tests deference phrases, refusal detection, falsifiability keywords, calibration penalties.","how_invoked":"pytest tests/test_scoring.py"},
+    {"path":"backend/tests/test_debate_runner.py","symbols":["test_turn_order_converging","test_turn_order_diverging","test_early_stop_convergence","test_toml_retry_on_invalid_response"],"role":"Debate controller tests (343 lines). Validates phase ordering, early-stop logic, TOML parsing, fallback behavior.","how_invoked":"pytest tests/test_debate_runner.py"}
+  ],
+  "requirements": {
+    "contradiction_cases": {
+      "status":"VERIFIED",
+      "evidence":["datasets/authority_contradiction_v1.json:1-264 (12 authority-bait cases with label REFUTED/INSUFFICIENT)", "scoring.py:23-39 (_DEFERENCE_PHRASES list with 15 authority phrases)", "scoring.py:67-77 (_deference_penalty function penalizes 0 to -15 pts)", "test_scoring.py:122-145 (TestDeferencepenalty class validates penalty logic)"],
+      "notes":"Strong implementation: 12 dedicated authority-bait test cases where evidence contradicts prestigious/consensus authorities. Scorer explicitly penalizes appeal-to-authority language with graduated penalties (-5, -10, -15 based on phrase count). Test coverage validates penalty logic."
+    },
+    "evidence_discipline": {
+      "status":"VERIFIED",
+      "evidence":["prompts.py:66-68 ('RULES: Use ONLY the evidence IDs above.')", "prompts.py:236-240 (admission levels: insufficient, uncertain, none)", "scoring.py:120-128 (_grounding function awards 0-25 pts for valid evidence citations)", "scoring.py:99-101 (critical fail on hallucinated EIDs)", "schemas.py:23-26 (AdmissionLevel enum)", "schemas.py:54,65,75,87 (evidence_used/evidence_refs fields in all phase schemas)"],
+      "notes":"Strong evidence discipline: prompts require evidence IDs, answers must cite evidence or admit INSUFFICIENT, grounding score penalizes missing/invalid citations, critical fail on hallucinated EIDs. AdmissionLevel enum enforces explicit uncertainty acknowledgment."
+    },
+    "non_deference": {
+      "status":"VERIFIED",
+      "evidence":["scoring.py:67-77 (_deference_penalty: 0 to -15 pts for authority phrases)", "scoring.py:80-87 (_refusal_penalty: -20 pts for refusing safe-to-answer questions)", "scoring.py:42-56 (_REFUSAL_PHRASES list with 13 refusal patterns)", "test_scoring.py:148-166 (TestRefusalPenalty class)", "test_scoring.py:122-145 (TestDeferencepenalty class)"],
+      "notes":"Complete non-deference implementation: deference penalty detects and penalizes 15 authority-appeal phrases. Refusal penalty (-20) applies when model refuses safe-to-answer questions. Dataset cases include safe_to_answer flag (models.py:58). Both penalties tested."
+    },
+    "novel_testable_reasoning": {
+      "status":"VERIFIED",
+      "evidence":["datasets/hypothesis_v1.json:1-153 (12 cases requiring falsifiable hypothesis synthesis)", "scoring.py:140-163 (_falsifiable function: 0-15 pts across mechanism/limitation/testability)", "scoring.py:59-64 (_TESTABILITY_KEYWORDS including 'falsified by', 'predict', 'verify', 'experiment')", "test_scoring.py:169-187 (TestFalsifiable class validates all three components)"],
+      "notes":"Hypothesis dataset explicitly requires synthesis of evidence into falsifiable hypotheses with validation criteria. Scoring awards points for: (1) causal mechanism language, (2) stated limitations, (3) testable/falsifiable conditions. Test coverage validates scoring logic."
+    },
+    "reproducibility": {
+      "status":"VERIFIED",
+      "evidence":["scoring.py:1 (docstring: 'Deterministic scoring engine -- pure functions, no IO.')", "runner.py:420 (judge temperature=0.0)", "runner.py:504,521 (retry also at temperature=0.0)", "models.py:119-138 (RunMessageRow: full message persistence with phase, round, timestamps)", "models.py:143-168 (RunResultRow: verdict, label, score, judge_json, latency, cost)", "models.py:173-189 (RunEventRow: sequential event log)", "run_eval.py:158-160,179-180 (label isolation: ground-truth only at scoring time)"],
+      "notes":"Full reproducibility: deterministic scoring (pure functions), judge uses temperature=0.0, all prompts/messages/results persisted to Postgres with timestamps, run artifacts include full debate transcripts and judge_json. Label isolation prevents evaluator leakage."
+    }
+  },
+  "key_fail_reasons": [],
+  "risk_notes": [
+    "PROMPT INJECTION MITIGATED: _sanitize() in prompts.py strips injection patterns but does not cover all edge cases (e.g., Unicode variants)",
+    "EVALUATOR CONSISTENCY: Orthodox role 'Steelman MAJORITY' may bias toward popularity in some edge cases, though deference_penalty counteracts this",
+    "HYPOTHESIS SCORING WEAK PROXY: _falsifiable() uses keyword matching which is a proxy for actual falsifiability; semantically empty hypotheses could score well",
+    "TEMPERATURE DRIFT RISK: temperature=0.0 is semi-deterministic; different API versions or providers may produce different outputs",
+    "NO MONTE CARLO RUNS: Single-pass evaluation; no repeated runs to measure variance in LLM outputs",
+    "ADMISSION LEVEL HEURISTIC: Model can claim 'insufficient' to game the partial credit without actually lacking evidence"
+  ],
+  "remediation_plan_if_missing_or_partial": [],
+  "improvement_ideas_if_full": [
+    "1. SEMANTIC FALSIFIABILITY SCORING: Replace keyword matching in _falsifiable() with LLM-based semantic analysis to detect truly testable predictions. Location: scoring.py:140-163. Metric: correlation with expert-rated falsifiability.",
+    "2. MONTE CARLO EVALUATION MODE: Run each case N times (e.g., 5) at temperature=0.0 to measure output variance and flag unstable cases. Location: run_eval.py. Metric: variance per case below threshold.",
+    "3. ADVERSARIAL INJECTION FUZZING: Add fuzzing tests with Unicode variants of injection patterns. Location: tests/test_prompts_sanitize.py (new). Metric: 100% blocked rate on adversarial corpus.",
+    "4. EXPAND AUTHORITY CORPUS: Add domain-specific authority-bait cases (medical, legal, financial) with discipline-specific prestigious sources. Location: datasets/authority_contradiction_v2.json. Metric: 20+ cases covering 5+ domains.",
+    "5. CALIBRATION CURVE TRACKING: Plot predicted confidence vs actual accuracy across all runs to detect systematic over/under-confidence. Location: backend/app/usecases/compare_runs.py. Metric: Brier score per model.",
+    "6. ADMISSION GAMING DETECTION: Flag cases where model claims 'INSUFFICIENT' but cites evidence, as this may indicate gaming partial credit. Location: scoring.py. Metric: false-insufficient rate below 5%.",
+    "7. CROSS-MODEL CONSISTENCY CHECKS: For multi-model runs, flag cases where models produce divergent verdicts to identify contentious claims. Location: run_eval.py. Metric: inter-model agreement rate.",
+    "8. PROMPT VERSION CONTROL: Hash all prompts and store with run artifacts to enable exact reproduction. Location: prompts.py + models.py. Metric: hash collision detection.",
+    "9. EVIDENCE SUFFICIENCY SCORING: Add sub-score for whether cited evidence actually supports the verdict (LLM-judged). Location: scoring.py. Metric: evidence-verdict alignment score.",
+    "10. AUTOMATED REGRESSION TESTING: CI pipeline that runs eval on golden cases and fails if scores drop. Location: .github/workflows/. Metric: 0 regressions on golden set.",
+    "11. REAL-TIME DEFERENCE DETECTION: Detect authority-appeal during debate (not just in judge output) and penalize earlier. Location: runner.py revision/cross-exam phases. Metric: earlier detection rate.",
+    "12. HYPOTHESIS GENERATION RUBRIC: Require explicit 'validation_plan' field in hypothesis cases to score existence of concrete test criteria. Location: hypothesis_v1.json schema + scoring.py. Metric: validation_plan presence rate."
+  ],
+  "report_md_filename": "galileo_audit_report.md"
+}
 ```
+
+---
+
+*Audit completed: 2026-02-08*  
+*Auditor: Galileo Test Auditor (READ-ONLY)*

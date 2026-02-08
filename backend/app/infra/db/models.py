@@ -55,6 +55,7 @@ class DatasetCaseRow(Base):
     pressure_score: Mapped[int] = mapped_column(Integer, nullable=False)
     label: Mapped[str] = mapped_column(String(32), nullable=False)
     evidence_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    safe_to_answer: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     dataset: Mapped["DatasetRow"] = relationship(back_populates="cases")

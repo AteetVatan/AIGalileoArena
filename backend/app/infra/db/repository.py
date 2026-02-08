@@ -39,6 +39,18 @@ class Repository:
         result = await self._s.execute(stmt)
         return result.scalar_one_or_none() is not None
 
+    async def get_dataset_version_only(self, dataset_id: str) -> Optional[str]:
+        """Get dataset version without loading cases. Returns None if not found.
+        
+        This avoids eager loading that pollutes the session with case objects,
+        which can cause session state corruption when deleting and recreating datasets.
+        
+        Use this instead of get_dataset() when you only need the version.
+        """
+        stmt = select(DatasetRow.version).where(DatasetRow.id == dataset_id)
+        result = await self._s.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def create_dataset(
         self,
         *,
@@ -64,12 +76,14 @@ class Repository:
         pressure_score: int,
         label: str,
         evidence_json: list[dict],
+        safe_to_answer: bool = True,
     ) -> None:
         row = DatasetCaseRow(
             dataset_id=dataset_id, case_id=case_id,
             topic=topic, claim=claim,
             pressure_score=pressure_score, label=label,
             evidence_json=evidence_json,
+            safe_to_answer=safe_to_answer,
         )
         self._s.add(row)
         await self._s.flush()
@@ -112,7 +126,29 @@ class Repository:
         return result.scalar_one_or_none()
 
     async def delete_dataset(self, dataset_id: str) -> None:
-        """Delete a dataset and all its cases (cascade)."""
+        """Delete a dataset and all its cases.
+        
+        IMPORTANT: 
+        - Core-level delete() statements don't trigger ORM relationship cascades
+        - PostgreSQL FK constraints (without ON DELETE CASCADE) prevent parent deletion if children exist
+        - We must explicitly delete in order: cases → cache slots → dataset
+        
+        If runs reference this dataset, an IntegrityError will be raised (by design - preserves data integrity).
+        """
+        # Delete cases first (PostgreSQL FK constraint requires this)
+        # Core delete doesn't trigger ORM cascade, so explicit deletion is necessary
+        cases_stmt = delete(DatasetCaseRow).where(
+            DatasetCaseRow.dataset_id == dataset_id
+        )
+        await self._s.execute(cases_stmt)
+        
+        # Delete cache slots (they reference datasets via FK without CASCADE)
+        cache_stmt = delete(CachedResultSetRow).where(
+            CachedResultSetRow.dataset_id == dataset_id
+        )
+        await self._s.execute(cache_stmt)
+        
+        # Now safe to delete dataset (no FK constraint violations)
         stmt = delete(DatasetRow).where(DatasetRow.id == dataset_id)
         await self._s.execute(stmt)
         await self._s.flush()

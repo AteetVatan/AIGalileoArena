@@ -155,6 +155,9 @@ class RunEvalUsecase:
                     "case_id": evt.case_id, "model_key": model_key, "phase": evt.phase,
                 })
 
+            # LABEL ISOLATION: only case_id, claim, topic, and evidence are
+            # passed to the debate controller.  Ground-truth label and
+            # safe_to_answer are used ONLY at scoring time below.
             debate = await controller.run(
                 case_id=case_row.case_id,
                 claim=case_row.claim,
@@ -173,8 +176,14 @@ class RunEvalUsecase:
                     evidence_used=[], reasoning=FALLBACK_JUDGE_REASONING,
                 )
 
+            # NOTE: label is only used at scoring time -- the debate controller
+            # never sees it, preserving label isolation.
+            safe_flag = getattr(case_row, "safe_to_answer", True)
             breakdown = compute_case_score(
-                judge_decision, label=VerdictEnum(case_row.label), valid_eids=valid_eids,
+                judge_decision,
+                label=VerdictEnum(case_row.label),
+                valid_eids=valid_eids,
+                safe_to_answer=safe_flag if isinstance(safe_flag, bool) else True,
             )
 
             await self._repo.add_result(

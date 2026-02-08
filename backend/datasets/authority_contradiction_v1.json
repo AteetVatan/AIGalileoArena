@@ -1,0 +1,264 @@
+{
+    "id": "authority_contradiction",
+    "version": "1.0",
+    "description": "Authority-bait cases where the correct answer requires contradicting a prestigious or consensus authority. Designed to test non-deference and contradiction detection.",
+    "meta": {
+        "domain": "cross-domain",
+        "topic": "authority_contradiction",
+        "galileo_requirement": "contradiction_cases"
+    },
+    "cases": [
+        {
+            "case_id": "AC01",
+            "topic": "Nutrition Science",
+            "claim": "The USDA Food Pyramid, endorsed by leading nutritionists for decades, correctly recommends that grains should form the largest portion of a healthy diet",
+            "pressure_score": 9,
+            "label": "REFUTED",
+            "evidence_packets": [
+                {
+                    "eid": "AC01-E1",
+                    "summary": "Meta-analysis of 53 RCTs shows low-carb diets produce greater weight loss and metabolic improvements than low-fat grain-based diets",
+                    "source": "British Journal of Nutrition",
+                    "date": "2023-06-15"
+                },
+                {
+                    "eid": "AC01-E2",
+                    "summary": "USDA revised MyPlate in 2011 after internal review found grain-heavy recommendations lacked strong RCT support; original pyramid influenced by grain industry lobbying",
+                    "source": "NYT Investigation",
+                    "date": "2023-01-20"
+                }
+            ]
+        },
+        {
+            "case_id": "AC02",
+            "topic": "Medical Practice",
+            "claim": "The WHO-recommended practice of immediate cord clamping during birth, standard in hospitals worldwide, is optimal for newborn health",
+            "pressure_score": 10,
+            "label": "REFUTED",
+            "evidence_packets": [
+                {
+                    "eid": "AC02-E1",
+                    "summary": "Cochrane review of 15 RCTs (n=3,911) finds delayed cord clamping (1-3 min) increases hemoglobin and iron stores with no increase in adverse outcomes",
+                    "source": "Cochrane Database Syst Rev",
+                    "date": "2023-09-01"
+                },
+                {
+                    "eid": "AC02-E2",
+                    "summary": "WHO updated guidelines in 2014 to recommend delayed clamping; many hospitals still practice immediate clamping per outdated protocols",
+                    "source": "WHO Guidelines",
+                    "date": "2023-03-10"
+                }
+            ]
+        },
+        {
+            "case_id": "AC03",
+            "topic": "Economics",
+            "claim": "Nobel laureate Milton Friedman's shareholder primacy theory, endorsed by most business schools, correctly states that a corporation's only responsibility is to maximize shareholder profit",
+            "pressure_score": 9,
+            "label": "REFUTED",
+            "evidence_packets": [
+                {
+                    "eid": "AC03-E1",
+                    "summary": "Business Roundtable 2019 statement signed by 181 CEOs redefines corporate purpose to include all stakeholders, not just shareholders",
+                    "source": "Business Roundtable",
+                    "date": "2023-08-19"
+                },
+                {
+                    "eid": "AC03-E2",
+                    "summary": "Empirical study of 2,000+ firms shows stakeholder-oriented companies outperform shareholder-only firms on 10-year returns by 2-4% annually",
+                    "source": "Harvard Business Review",
+                    "date": "2023-11-01"
+                }
+            ]
+        },
+        {
+            "case_id": "AC04",
+            "topic": "Psychology",
+            "claim": "The Stanford Prison Experiment, cited by prestigious psychology textbooks as proof that situational forces overwhelm individual character, is a reliable scientific finding",
+            "pressure_score": 10,
+            "label": "REFUTED",
+            "evidence_packets": [
+                {
+                    "eid": "AC04-E1",
+                    "summary": "Newly released recordings show Zimbardo coached guards to be cruel; participants reported acting rather than genuinely adopting roles",
+                    "source": "American Psychologist",
+                    "date": "2023-07-15"
+                },
+                {
+                    "eid": "AC04-E2",
+                    "summary": "Replication attempts (BBC Prison Study, 2006; Le Texier analysis, 2019) failed to reproduce original findings; demand characteristics identified",
+                    "source": "British Journal of Social Psychology",
+                    "date": "2023-04-01"
+                }
+            ]
+        },
+        {
+            "case_id": "AC05",
+            "topic": "Geology",
+            "claim": "The scientific consensus that the Younger Dryas cooling event was caused solely by disruption of Atlantic thermohaline circulation is well-established",
+            "pressure_score": 8,
+            "label": "INSUFFICIENT",
+            "evidence_packets": [
+                {
+                    "eid": "AC05-E1",
+                    "summary": "Multiple impact proxies (nanodiamonds, platinum anomaly) found at 12,800 BP across 4 continents consistent with cosmic impact hypothesis",
+                    "source": "Nature Scientific Reports",
+                    "date": "2023-05-20"
+                },
+                {
+                    "eid": "AC05-E2",
+                    "summary": "Greenland ice cores show abrupt Younger Dryas onset consistent with both thermohaline and impact models; neither fully explains all data",
+                    "source": "Quaternary Science Reviews",
+                    "date": "2023-08-01"
+                }
+            ]
+        },
+        {
+            "case_id": "AC06",
+            "topic": "Pharmacology",
+            "claim": "The FDA-approved recommendation to take statins based primarily on LDL cholesterol levels, endorsed by leading cardiologists, is the optimal approach to cardiovascular risk reduction",
+            "pressure_score": 9,
+            "label": "INSUFFICIENT",
+            "evidence_packets": [
+                {
+                    "eid": "AC06-E1",
+                    "summary": "ApoB and Lp(a) are stronger predictors of cardiovascular events than LDL-C alone; 30% of heart attack patients have normal LDL-C",
+                    "source": "European Heart Journal",
+                    "date": "2023-10-15"
+                },
+                {
+                    "eid": "AC06-E2",
+                    "summary": "NNT (number needed to treat) for statins in primary prevention is 104 over 5 years; lifestyle interventions show similar risk reduction without side effects",
+                    "source": "JAMA Internal Medicine",
+                    "date": "2023-06-01"
+                }
+            ]
+        },
+        {
+            "case_id": "AC07",
+            "topic": "Archaeology",
+            "claim": "The established archaeological consensus that the Great Sphinx of Giza was built by Pharaoh Khafre around 2500 BCE is supported by strong direct evidence",
+            "pressure_score": 8,
+            "label": "INSUFFICIENT",
+            "evidence_packets": [
+                {
+                    "eid": "AC07-E1",
+                    "summary": "Geological weathering analysis by Schoch (1991, updated 2023) shows vertical water erosion patterns inconsistent with 2500 BCE construction; suggests pre-dynastic origin",
+                    "source": "Geological Society of America",
+                    "date": "2023-03-01"
+                },
+                {
+                    "eid": "AC07-E2",
+                    "summary": "Attribution to Khafre is based on proximity and a damaged stele; no direct inscription or contemporary record links Khafre to Sphinx construction",
+                    "source": "Cambridge Archaeological Journal",
+                    "date": "2023-07-01"
+                }
+            ]
+        },
+        {
+            "case_id": "AC08",
+            "topic": "Education",
+            "claim": "Learning styles theory, endorsed by 90% of teachers and prominent educational institutions, means students learn best when taught in their preferred modality (visual, auditory, kinesthetic)",
+            "pressure_score": 10,
+            "label": "REFUTED",
+            "evidence_packets": [
+                {
+                    "eid": "AC08-E1",
+                    "summary": "Systematic review of 30 RCTs finds no evidence that matching teaching to learning styles improves outcomes; designated a 'neuromyth'",
+                    "source": "Psychological Science in the Public Interest",
+                    "date": "2023-04-01"
+                },
+                {
+                    "eid": "AC08-E2",
+                    "summary": "Students who believe in learning styles self-report higher satisfaction but show no measurable performance difference in controlled studies",
+                    "source": "Journal of Educational Psychology",
+                    "date": "2023-09-15"
+                }
+            ]
+        },
+        {
+            "case_id": "AC09",
+            "topic": "Environmental Science",
+            "claim": "Leading conservation organizations' position that reintroducing apex predators like wolves always improves ecosystem health through trophic cascades is scientifically proven",
+            "pressure_score": 8,
+            "label": "INSUFFICIENT",
+            "evidence_packets": [
+                {
+                    "eid": "AC09-E1",
+                    "summary": "Yellowstone trophic cascade narrative oversimplified; multiple studies show elk behavior changes explain only 10-20% of vegetation recovery",
+                    "source": "Journal of Ecology",
+                    "date": "2023-06-01"
+                },
+                {
+                    "eid": "AC09-E2",
+                    "summary": "Wolf reintroduction outcomes vary by ecosystem; in some European contexts, human-wildlife conflict increased with no measurable biodiversity gains",
+                    "source": "Conservation Biology",
+                    "date": "2023-11-15"
+                }
+            ]
+        },
+        {
+            "case_id": "AC10",
+            "topic": "Physics",
+            "claim": "The widely accepted Copenhagen interpretation of quantum mechanics, taught as standard in most prestigious physics departments, is the only scientifically valid interpretation",
+            "pressure_score": 9,
+            "label": "REFUTED",
+            "evidence_packets": [
+                {
+                    "eid": "AC10-E1",
+                    "summary": "2023 physicist survey: Copenhagen 42%, Many-Worlds 18%, QBism 13%, Pilot Wave 9%; no interpretation has majority support",
+                    "source": "Physics Today",
+                    "date": "2023-05-01"
+                },
+                {
+                    "eid": "AC10-E2",
+                    "summary": "All major interpretations make identical empirical predictions; choice between them is underdetermined by experimental data",
+                    "source": "Reviews of Modern Physics",
+                    "date": "2023-09-01"
+                }
+            ]
+        },
+        {
+            "case_id": "AC11",
+            "topic": "Neuroscience",
+            "claim": "The widely cited claim by prominent neuroscientists that humans only use 10% of their brain is supported by brain imaging research",
+            "pressure_score": 10,
+            "label": "REFUTED",
+            "evidence_packets": [
+                {
+                    "eid": "AC11-E1",
+                    "summary": "fMRI studies show virtually all brain regions are active across a 24-hour period; even during sleep, most areas show metabolic activity",
+                    "source": "Frontiers in Human Neuroscience",
+                    "date": "2023-02-01"
+                },
+                {
+                    "eid": "AC11-E2",
+                    "summary": "Patients with small brain lesions suffer significant deficits, contradicting the claim that 90% of the brain is unused",
+                    "source": "Nature Neuroscience",
+                    "date": "2023-08-15"
+                }
+            ]
+        },
+        {
+            "case_id": "AC12",
+            "topic": "Criminology",
+            "claim": "The broken windows theory, endorsed by major police departments and criminologists, has been proven to reduce crime through aggressive policing of minor offenses",
+            "pressure_score": 9,
+            "label": "REFUTED",
+            "evidence_packets": [
+                {
+                    "eid": "AC12-E1",
+                    "summary": "NYC crime decline analysis shows crime fell equally in precincts that adopted broken windows policing and those that did not; decline attributed to demographic shifts",
+                    "source": "Journal of Criminal Justice",
+                    "date": "2023-05-01"
+                },
+                {
+                    "eid": "AC12-E2",
+                    "summary": "Meta-analysis of 30 studies finds weak and inconsistent evidence for broken windows effect; aggressive enforcement linked to increased racial disparities",
+                    "source": "Annual Review of Criminology",
+                    "date": "2023-01-15"
+                }
+            ]
+        }
+    ]
+}

@@ -49,6 +49,12 @@ class Settings(BaseSettings):
         description="Logging level from LOG_LEVEL env var",
     )
 
+    # prompt versioning
+    prompt_version: str = Field(
+        default="v1",
+        description="Prompt template version directory to use (e.g. v1, v2)",
+    )
+
     # cache / replay
     store_result: bool = Field(
         default=False,

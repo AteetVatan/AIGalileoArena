@@ -1,0 +1,152 @@
+{
+  "id": "hypothesis",
+  "version": "1.0",
+  "description": "Cases requiring synthesis of evidence into falsifiable hypotheses with concrete validation plans. Designed to test novel/testable reasoning.",
+  "meta": {"domain": "cross-domain", "topic": "hypothesis_generation", "galileo_requirement": "novel_testable_reasoning"},
+  "cases": [
+    {
+      "case_id": "HY01",
+      "topic": "Epidemiology",
+      "claim": "The sharp rise in autoimmune diseases in developed nations since 1980 is primarily caused by reduced childhood microbial exposure",
+      "pressure_score": 8,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY01-E1", "summary": "Autoimmune disease incidence increased 3-9% per year in Western nations 1980-2020; hygiene hypothesis proposes reduced microbial exposure disrupts immune regulation", "source": "Lancet", "date": "2023-04-01"},
+        {"eid": "HY01-E2", "summary": "Children raised on farms with livestock have 50% lower asthma rates; Amish vs Hutterite study shows 4x difference despite genetic similarity", "source": "NEJM", "date": "2023-08-15"},
+        {"eid": "HY01-E3", "summary": "Antibiotic use in first year of life associated with 2x risk of IBD; gut microbiome diversity declining in industrialized populations", "source": "Nature Medicine", "date": "2023-11-01"}
+      ]
+    },
+    {
+      "case_id": "HY02",
+      "topic": "Behavioral Economics",
+      "claim": "Default opt-in organ donation policies cause higher organ donation rates compared to opt-out systems",
+      "pressure_score": 7,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY02-E1", "summary": "Countries with opt-out policies show 25-30% higher registered donor rates but actual transplant rates differ by only 5-8%", "source": "BMJ", "date": "2023-06-01"},
+        {"eid": "HY02-E2", "summary": "Spain (opt-out) leads in transplants but attributes success to transplant coordinator network, not the legal default", "source": "Transplantation", "date": "2023-09-15"},
+        {"eid": "HY02-E3", "summary": "Wales switched to opt-out in 2015; deceased donation rates increased 10% but confounded by simultaneous infrastructure investment", "source": "UK NHS Report", "date": "2023-03-01"}
+      ]
+    },
+    {
+      "case_id": "HY03",
+      "topic": "Marine Biology",
+      "claim": "Microplastic ingestion is causing measurable reproductive decline in oceanic fish populations",
+      "pressure_score": 8,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY03-E1", "summary": "Lab studies show microplastic exposure reduces fish fertility by 20-40% at concentrations 10-100x higher than current ocean levels", "source": "Environmental Science & Technology", "date": "2023-07-01"},
+        {"eid": "HY03-E2", "summary": "Field surveys detect microplastics in 90% of sampled fish; endocrine-disrupting chemical leaching confirmed but dose-response in wild populations unknown", "source": "Science of the Total Environment", "date": "2023-10-01"},
+        {"eid": "HY03-E3", "summary": "North Sea herring populations declined 30% since 2005; multiple stressors (overfishing, warming, pollution) confound single-cause attribution", "source": "ICES Journal of Marine Science", "date": "2023-05-15"}
+      ]
+    },
+    {
+      "case_id": "HY04",
+      "topic": "Urban Planning",
+      "claim": "15-minute city designs reduce carbon emissions more effectively than electric vehicle adoption alone",
+      "pressure_score": 7,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY04-E1", "summary": "Barcelona superblocks pilot reduced car traffic 25% and NOx 25% in intervention areas; displaced traffic partially offset gains in surrounding streets", "source": "Environment International", "date": "2023-04-15"},
+        {"eid": "HY04-E2", "summary": "Life-cycle analysis shows EV adoption reduces transport emissions 50-70% but manufacturing and grid emissions persist; total savings depend on electricity mix", "source": "Nature Energy", "date": "2023-08-01"},
+        {"eid": "HY04-E3", "summary": "Paris 15-minute city policies correlated with 8% reduction in car trips 2020-2023; cycling infrastructure investment a major confound", "source": "Transport Policy", "date": "2023-12-01"}
+      ]
+    },
+    {
+      "case_id": "HY05",
+      "topic": "Cognitive Science",
+      "claim": "Regular bilingual practice delays the onset of Alzheimer's disease by 4-5 years",
+      "pressure_score": 8,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY05-E1", "summary": "Meta-analysis of 20 studies: bilinguals diagnosed with dementia 4.5 years later on average, but selection bias and education confounds not fully controlled", "source": "Neuropsychologia", "date": "2023-03-01"},
+        {"eid": "HY05-E2", "summary": "fMRI shows bilinguals have greater cognitive reserve markers (increased prefrontal cortex volume, enhanced executive function networks)", "source": "Brain", "date": "2023-07-15"},
+        {"eid": "HY05-E3", "summary": "Large Canadian cohort study (n=28,000) found no significant bilingual advantage after controlling for immigration status and education level", "source": "Neurology", "date": "2023-11-01"}
+      ]
+    },
+    {
+      "case_id": "HY06",
+      "topic": "Agricultural Science",
+      "claim": "Regenerative agriculture practices can sequester enough carbon to offset 10% of global agricultural emissions annually",
+      "pressure_score": 8,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY06-E1", "summary": "Cover cropping and no-till farming increase soil organic carbon by 0.3-0.5 tonnes C/ha/year in temperate climates; saturation occurs after 20-30 years", "source": "Nature Food", "date": "2023-05-01"},
+        {"eid": "HY06-E2", "summary": "Global agricultural emissions are 10.5 GtCO2e/year; regenerative practices on 40% of cropland could sequester 0.5-1.5 GtCO2e/year (5-15% offset)", "source": "Science", "date": "2023-09-01"},
+        {"eid": "HY06-E3", "summary": "Permanence of soil carbon storage uncertain; drought or tillage can release stored carbon within 1-3 years", "source": "Global Change Biology", "date": "2023-07-01"}
+      ]
+    },
+    {
+      "case_id": "HY07",
+      "topic": "Social Psychology",
+      "claim": "Social media use of more than 3 hours daily causes clinical depression in adolescents",
+      "pressure_score": 9,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY07-E1", "summary": "US Surgeon General advisory cites association between 3+ hrs daily social media and doubled depression risk in teens; cross-sectional data, not causal", "source": "US Surgeon General", "date": "2023-05-23"},
+        {"eid": "HY07-E2", "summary": "Randomized experiment: participants who reduced social media to 30 min/day for 3 weeks showed reduced loneliness and depression vs control group", "source": "Journal of Social and Clinical Psychology", "date": "2023-02-01"},
+        {"eid": "HY07-E3", "summary": "Longitudinal UK study (n=12,000) finds screen time explains only 0.4% of variance in adolescent wellbeing; sleep disruption is the mediating factor", "source": "Psychological Science", "date": "2023-08-01"}
+      ]
+    },
+    {
+      "case_id": "HY08",
+      "topic": "Pharmacogenomics",
+      "claim": "Genetic testing for drug metabolism (pharmacogenomics) reduces adverse drug reactions by 30% compared to standard prescribing",
+      "pressure_score": 7,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY08-E1", "summary": "PREPARE study (n=6,944): pharmacogenomics-guided prescribing reduced adverse drug reactions by 30% over 12 weeks vs standard care", "source": "Lancet", "date": "2023-02-05"},
+        {"eid": "HY08-E2", "summary": "Only 5 drug-gene pairs have strong clinical evidence; most prescribed drugs have no validated pharmacogenomic guidance", "source": "Clinical Pharmacology & Therapeutics", "date": "2023-06-01"},
+        {"eid": "HY08-E3", "summary": "Implementation cost of $300-500 per patient; cost-effectiveness uncertain beyond high-risk polypharmacy populations", "source": "JAMA Network Open", "date": "2023-10-01"}
+      ]
+    },
+    {
+      "case_id": "HY09",
+      "topic": "Sleep Science",
+      "claim": "Chronic sleep restriction to 6 hours per night causes measurable cognitive decline equivalent to 2 nights of total sleep deprivation",
+      "pressure_score": 8,
+      "label": "SUPPORTED",
+      "evidence_packets": [
+        {"eid": "HY09-E1", "summary": "14-day sleep restriction study: 6-hr sleepers showed cumulative cognitive deficits equivalent to 48 hours total deprivation on PVT and working memory tasks", "source": "Sleep", "date": "2023-03-15"},
+        {"eid": "HY09-E2", "summary": "Neuroimaging shows chronic 6-hr sleepers have reduced prefrontal cortex activation and increased default mode network interference during tasks", "source": "PNAS", "date": "2023-09-01"},
+        {"eid": "HY09-E3", "summary": "Self-reported sleepiness plateaus after day 3, creating dangerous disconnect between perceived and actual impairment", "source": "Journal of Sleep Research", "date": "2023-06-01"}
+      ]
+    },
+    {
+      "case_id": "HY10",
+      "topic": "Climate Adaptation",
+      "claim": "Urban green infrastructure (green roofs, bioswales) can reduce urban heat island effect by 2-3 degrees Celsius at city scale",
+      "pressure_score": 7,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY10-E1", "summary": "Modeling study: 50% green roof coverage in Phoenix would reduce peak summer temperature by 1.5-2.0 C in densest urban areas", "source": "Environmental Research Letters", "date": "2023-05-01"},
+        {"eid": "HY10-E2", "summary": "Singapore's green infrastructure program achieved 0.5-1.0 C local cooling but city-wide effect unmeasurable against background variability", "source": "Urban Climate", "date": "2023-08-15"},
+        {"eid": "HY10-E3", "summary": "Green infrastructure water requirements may be unsustainable in arid cities during heat waves when cooling is most needed", "source": "Nature Cities", "date": "2023-11-01"}
+      ]
+    },
+    {
+      "case_id": "HY11",
+      "topic": "Microbiome Research",
+      "claim": "Fecal microbiota transplantation can effectively treat treatment-resistant depression",
+      "pressure_score": 8,
+      "label": "INSUFFICIENT",
+      "evidence_packets": [
+        {"eid": "HY11-E1", "summary": "Pilot RCT (n=60): FMT from healthy donors improved depression scores by 40% vs placebo at 8 weeks; effect attenuated by week 12", "source": "Nature Medicine", "date": "2023-10-01"},
+        {"eid": "HY11-E2", "summary": "Gut-brain axis: specific Lactobacillus and Bifidobacterium strains produce GABA and serotonin precursors; causal mechanism plausible but unproven in humans", "source": "Cell", "date": "2023-04-15"},
+        {"eid": "HY11-E3", "summary": "FMT carries risks of antibiotic-resistant organism transmission; FDA safety alert issued after 2 patient deaths from unscreened donor stool", "source": "FDA Safety Communication", "date": "2023-06-01"}
+      ]
+    },
+    {
+      "case_id": "HY12",
+      "topic": "Materials Science",
+      "claim": "Room-temperature superconductors will be commercially viable within 10 years based on recent LK-99 claims",
+      "pressure_score": 9,
+      "label": "REFUTED",
+      "evidence_packets": [
+        {"eid": "HY12-E1", "summary": "LK-99 replication attempts at 12 major labs universally failed to reproduce superconductivity; observed effects attributed to Cu2S impurity phase transitions", "source": "Nature", "date": "2023-08-16"},
+        {"eid": "HY12-E2", "summary": "Current highest confirmed Tc is 250K at 170 GPa (hydrogen sulfide); room temperature at ambient pressure remains unachieved in peer-reviewed work", "source": "Physical Review Letters", "date": "2023-11-01"},
+        {"eid": "HY12-E3", "summary": "Materials science experts estimate 20-50 year timeline for practical room-temperature superconductors based on current theoretical understanding", "source": "Science", "date": "2023-09-15"}
+      ]
+    }
+  ]
+}

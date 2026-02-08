@@ -68,10 +68,24 @@ async def load_all_datasets(session: AsyncSession) -> None:
         try:
             await _load_one(repo, json_file)
             await savepoint.commit()
-        except IntegrityError:
+        except IntegrityError as e:
             # Rollback just this savepoint and continue with next dataset
             await savepoint.rollback()
-            logger.warning("Dataset from %s already exists, skipping.", json_file.name)
+            error_msg = str(e).lower()
+            if "foreign key constraint" in error_msg:
+                if "runs" in error_msg:
+                    logger.warning(
+                        "Cannot update dataset from %s: runs reference this dataset. "
+                        "Delete related runs first or use a different dataset_id.",
+                        json_file.name
+                    )
+                else:
+                    logger.warning(
+                        "Foreign key constraint violation when loading %s: %s",
+                        json_file.name, e
+                    )
+            else:
+                logger.warning("Dataset from %s already exists, skipping.", json_file.name)
         except Exception:
             # Rollback this savepoint and continue
             await savepoint.rollback()
@@ -98,19 +112,21 @@ async def _load_one(repo: Repository, path: Path) -> None:
     # Extract version from filename (e.g., "climate_v2.json" -> "2")
     new_version = _extract_version_from_filename(path.name)
     
-    # Check if dataset exists and compare versions
-    existing_dataset = await repo.get_dataset(dataset_id)
-    if existing_dataset is not None:
-        if existing_dataset.version == new_version:
+    # Use lightweight version check (avoids loading all cases into session)
+    # This prevents session state pollution that causes hangs
+    existing_version = await repo.get_dataset_version_only(dataset_id)
+    if existing_version is not None:
+        if existing_version == new_version:
             logger.info("dataset %s (version %s) already loaded, skipping.", dataset_id, new_version)
             return
         else:
             # Version changed - delete old dataset and recreate
             logger.info(
                 "dataset %s version changed (%s -> %s), updating...",
-                dataset_id, existing_dataset.version, new_version
+                dataset_id, existing_version, new_version
             )
             await repo.delete_dataset(dataset_id)
+            # No need to expunge_all() - we never loaded cases into the session
 
     await repo.create_dataset(
         dataset_id=dataset_id,
@@ -132,6 +148,7 @@ async def _load_one(repo: Repository, path: Path) -> None:
             pressure_score=case.get("pressure_score", 5),
             label=case["label"],
             evidence_json=evidence,
+            safe_to_answer=case.get("safe_to_answer", True),
         )
 
     logger.info("Loaded dataset %s (version %s, %d cases).", dataset_id, new_version, len(data.get("cases", [])))

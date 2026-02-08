@@ -501,7 +501,7 @@ class DebateController:
     ) -> tuple[T, str, float]:
         total_cost = 0.0
 
-        resp = await self._llm.complete(prompt, temperature=0.3)
+        resp = await self._llm.complete(prompt, temperature=0.0)
         total_cost += resp.cost_estimate
         raw = resp.text
 

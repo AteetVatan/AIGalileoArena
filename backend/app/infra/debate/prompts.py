@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.core.domain.schemas import DebateRole, VerdictEnum
@@ -12,14 +13,37 @@ from .toml_serde import dict_to_toml
 _VERDICT_OPTIONS = "|".join(v.value for v in VerdictEnum)
 _ADMISSION_OPTIONS = "|".join(a.value for a in AdmissionLevel)
 
+# --- prompt injection sanitisation ---
+
+_INJECTION_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"ignore\s+(all\s+)?previous\s+instructions", re.IGNORECASE),
+    re.compile(r"system\s*:", re.IGNORECASE),
+    re.compile(r"<\|im_start\|>", re.IGNORECASE),
+    re.compile(r"<\|im_end\|>", re.IGNORECASE),
+    re.compile(r"\[INST\]", re.IGNORECASE),
+    re.compile(r"\[/INST\]", re.IGNORECASE),
+    re.compile(r"```\s*(python|bash|sh|javascript|js)\b", re.IGNORECASE),
+    re.compile(r"<script\b", re.IGNORECASE),
+]
+
+
+def _sanitize(text: str) -> str:
+    """Strip prompt-injection patterns and TOML-breaking characters from user content."""
+    cleaned = text
+    for pat in _INJECTION_PATTERNS:
+        cleaned = pat.sub("[REDACTED]", cleaned)
+    # Strip markdown code fences that could confuse TOML parsing
+    cleaned = cleaned.replace("```toml", "").replace("```", "")
+    return cleaned
+
 
 def format_evidence(evidence_packets: list[dict]) -> str:
-    """Render evidence packets as a readable block for prompt injection."""
+    """Render evidence packets as a readable block for prompt inclusion."""
     lines = ["Evidence Packets:"]
     for ep in evidence_packets:
         lines.append(
-            f'  [{ep["eid"]}] {ep["summary"]} '
-            f'(Source: {ep["source"]}, Date: {ep["date"]})'
+            f'  [{_sanitize(ep["eid"])}] {_sanitize(ep["summary"])} '
+            f'(Source: {_sanitize(ep["source"])}, Date: {_sanitize(ep["date"])})'
         )
     return "\n".join(lines)
 
@@ -33,12 +57,12 @@ def case_packet_text(
 ) -> str:
     """Moderator context block injected into every agent prompt."""
     parts = [
-        f"Topic: {topic}",
-        f"Claim: {claim}",
+        f"Topic: {_sanitize(topic)}",
+        f"Claim: {_sanitize(claim)}",
     ]
     if pressure_text:
-        parts.append(f"Pressure context: {pressure_text}")
-    parts.append(evidence_text)
+        parts.append(f"Pressure context: {_sanitize(pressure_text)}")
+    parts.append(evidence_text)  # already sanitised in format_evidence
     parts.append(
         "RULES: Use ONLY the evidence IDs above. "
         "Do NOT introduce outside facts. Be concise."
