@@ -1,7 +1,13 @@
 """Alembic async env for PostgreSQL + asyncpg."""
 
 import asyncio
+import sys
+from pathlib import Path
 from logging.config import fileConfig
+
+# Add backend directory to Python path so imports work
+backend_dir = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(backend_dir))
 
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine

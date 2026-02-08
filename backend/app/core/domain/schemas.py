@@ -2,11 +2,30 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
+
+
+# --- ML scoring (pre-computed by infra layer, consumed by domain scorer) ---
+
+@dataclass(frozen=True)
+class MLScores:
+    """Pre-computed ML sub-scores passed from infra to domain.
+
+    All values are raw probabilities / similarities in [0.0, 1.0].
+    The domain scorer maps these to integer rubric points.
+    """
+
+    grounding_entailment: float    # avg NLI entailment across cited evidence
+    falsifiable_mechanism: float   # cosine sim to mechanism exemplars
+    falsifiable_limitation: float  # cosine sim to limitation exemplars
+    falsifiable_testability: float # cosine sim to testability exemplars
+    deference_score: float         # NLI entailment for authority-deference hypothesis
+    refusal_score: float           # NLI entailment for refusal hypothesis
 
 
 # --- enums ---

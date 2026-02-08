@@ -66,6 +66,48 @@ class Settings(BaseSettings):
         description="Number of cache slots per (dataset, model, case) triple",
     )
 
+    # --- ML scoring (ONNX) ---
+    ml_scoring_enabled: bool = Field(
+        default=True,
+        description="Enable ONNX ML-enhanced scoring (requires models in ml_models_dir)",
+    )
+    ml_models_dir: str = Field(
+        default="models",
+        description="Directory containing exported ONNX models (relative to backend root)",
+    )
+    onnx_intra_threads: int = Field(
+        default=2, ge=1,
+        description="ONNX Runtime intra-op thread count (leave cores for uvicorn)",
+    )
+    ml_max_workers: int = Field(
+        default=2, ge=1,
+        description="Max concurrent ML scoring threads in the bounded executor",
+    )
+    ml_nli_max_tokens: int = Field(
+        default=384, ge=64, le=512,
+        description="Max token length for NLI cross-encoder inputs (truncation limit)",
+    )
+    ml_falsifiable_threshold: float = Field(
+        default=0.45, ge=0.0, le=1.0,
+        description="Cosine-sim threshold for semantic falsifiability exemplar match",
+    )
+    ml_deference_threshold_low: float = Field(
+        default=0.4,
+        description="NLI entailment below this = no deference penalty",
+    )
+    ml_deference_threshold_mid: float = Field(
+        default=0.6,
+        description="NLI entailment below this = -5 deference penalty",
+    )
+    ml_deference_threshold_high: float = Field(
+        default=0.8,
+        description="NLI entailment below this = -10; above = -15 deference penalty",
+    )
+    ml_refusal_threshold: float = Field(
+        default=0.6, ge=0.0, le=1.0,
+        description="NLI entailment threshold above which refusal penalty is applied",
+    )
+
     @property
     def debug_mode(self) -> bool:
         return self.log_level.upper() == "DEBUG"

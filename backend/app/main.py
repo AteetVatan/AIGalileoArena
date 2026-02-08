@@ -46,6 +46,35 @@ async def lifespan(app: FastAPI):
         if deleted:
             logger.info("Cleared %d cached result slot(s) on startup.", deleted)
 
+    # --- ML scoring model warm-up (optional) ---
+    if settings.ml_scoring_enabled:
+        try:
+            from app.infra.ml.model_registry import ModelRegistry
+
+            logger.info(
+                "Loading ONNX ML scoring models from '%s' ...",
+                settings.ml_models_dir,
+            )
+            ModelRegistry.warm_up()
+            logger.info("ML scoring models ready (2 ONNX sessions).")
+        except FileNotFoundError as e:
+            logger.warning(
+                "ML_SCORING_ENABLED=true but ONNX models not found in '%s/'. "
+                "ML scoring will be disabled. Run the export script to enable: "
+                "python -m scripts.export_onnx_models --output-dir %s",
+                settings.ml_models_dir,
+                settings.ml_models_dir,
+            )
+            # Disable ML scoring for this session
+            settings.ml_scoring_enabled = False
+        except Exception as e:
+            logger.error(
+                "Failed to load ML scoring models: %s. ML scoring will be disabled.",
+                e,
+                exc_info=True,
+            )
+            settings.ml_scoring_enabled = False
+
     logger.info("Galileo Arena ready.")
     yield
     logger.info("Shutting down.")

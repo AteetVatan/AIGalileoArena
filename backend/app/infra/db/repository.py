@@ -162,14 +162,32 @@ class Repository:
         dataset_id: str,
         case_id: str,
         models_json: list[dict],
+        scoring_mode: Optional[str] = None,
     ) -> None:
+        from app.config import settings
+        
+        # Set scoring_mode explicitly (fallback to config if not provided)
+        if scoring_mode is None:
+            scoring_mode = "ml" if settings.ml_scoring_enabled else "deterministic"
+        
         row = RunRow(
-            run_id=run_id, dataset_id=dataset_id,
-            case_id=case_id, models_json=models_json,
+            run_id=run_id,
+            dataset_id=dataset_id,
+            case_id=case_id,
+            models_json=models_json,
             status=RunStatus.PENDING,
+            scoring_mode=scoring_mode,
         )
         self._s.add(row)
-        await self._s.flush()
+        try:
+            await self._s.flush()
+        except Exception as e:
+            logger.error(
+                "Failed to create run: run_id=%s, dataset_id=%s, case_id=%s, error=%s",
+                run_id, dataset_id, case_id, e,
+                exc_info=True,
+            )
+            raise
 
     async def get_run(self, run_id: str) -> Optional[RunRow]:
         stmt = select(RunRow).where(RunRow.run_id == run_id)

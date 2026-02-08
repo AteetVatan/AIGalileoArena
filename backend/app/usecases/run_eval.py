@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Optional
 
@@ -46,11 +47,17 @@ class RunEvalUsecase:
 
         models_json = [{"provider": m["provider"], "model_name": m["model_name"]} for m in models]
 
+        # Record scoring mode for auditability / run comparison
+        scoring_mode = "ml" if settings.ml_scoring_enabled else "deterministic"
+
         existing = await self._repo.get_run(run_id)
         if existing is None:
             await self._repo.create_run(
-                run_id=run_id, dataset_id=dataset_id,
-                case_id=case_id, models_json=models_json,
+                run_id=run_id,
+                dataset_id=dataset_id,
+                case_id=case_id,
+                models_json=models_json,
+                scoring_mode=scoring_mode,
             )
 
         await self._repo.update_run_status(run_id, status=RunStatus.RUNNING)
@@ -179,12 +186,36 @@ class RunEvalUsecase:
             # NOTE: label is only used at scoring time -- the debate controller
             # never sees it, preserving label isolation.
             safe_flag = getattr(case_row, "safe_to_answer", True)
+
+            # --- ML scoring (optional, non-blocking) ---
+            ml_scores = None
+            if settings.ml_scoring_enabled:
+                from app.infra.ml.scorer import compute_ml_scores_async
+
+                evidence_map = {
+                    ep["eid"]: ep["summary"] for ep in case_row.evidence_json
+                }
+                ml_scores = await compute_ml_scores_async(
+                    judge_decision.reasoning,
+                    judge_decision.evidence_used,
+                    evidence_map,
+                )
+
             breakdown = compute_case_score(
                 judge_decision,
                 label=VerdictEnum(case_row.label),
                 valid_eids=valid_eids,
                 safe_to_answer=safe_flag if isinstance(safe_flag, bool) else True,
+                ml_scores=ml_scores,
             )
+
+            # Persist ML diagnostics in the existing judge_json column
+            judge_json_out: dict[str, Any] = dict(debate.judge_json) if debate.judge_json else {}
+            if ml_scores is not None:
+                judge_json_out["ml_scores"] = asdict(ml_scores)
+                judge_json_out["scoring_mode"] = "ml"
+            else:
+                judge_json_out["scoring_mode"] = "deterministic"
 
             await self._repo.add_result(
                 run_id=run_id, case_id=case_row.case_id, model_key=model_key,
@@ -195,7 +226,7 @@ class RunEvalUsecase:
                 critical_fail_reason=breakdown.critical_fail_reason,
                 latency_ms=debate.total_latency_ms,
                 cost_estimate=debate.total_cost,
-                judge_json=debate.judge_json,
+                judge_json=judge_json_out,
             )
             await self._repo.commit()
 

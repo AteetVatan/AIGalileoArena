@@ -41,6 +41,7 @@ class RunComparison(BaseModel):
     avg_score_delta: float
     cases: list[CaseComparison]
     has_regression: bool
+    scoring_mode_mismatch: bool = False
 
 
 # --- helpers ---
@@ -82,6 +83,13 @@ async def compare_runs(
         RunComparison with per-case deltas and aggregate statistics.
     """
     repo = Repository(session)
+
+    # Check scoring mode mismatch for auditability
+    run_a = await repo.get_run(run_a_id)
+    run_b = await repo.get_run(run_b_id)
+    mode_a = getattr(run_a, "scoring_mode", "deterministic") if run_a else "deterministic"
+    mode_b = getattr(run_b, "scoring_mode", "deterministic") if run_b else "deterministic"
+    mode_mismatch = mode_a != mode_b
 
     results_a = await repo.get_run_results(run_a_id, model_key=model_key)
     results_b = await repo.get_run_results(run_b_id, model_key=model_key)
@@ -142,4 +150,5 @@ async def compare_runs(
         avg_score_delta=round(avg_delta, 2),
         cases=cases,
         has_regression=(regressions > 0),
+        scoring_mode_mismatch=mode_mismatch,
     )

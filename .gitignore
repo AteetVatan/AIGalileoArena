@@ -25,6 +25,9 @@ Thumbs.db
 # Docker
 pgdata/
 
+# ML / ONNX models
+backend/models/
+
 # Misc
 *.log
 

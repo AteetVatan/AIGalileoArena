@@ -77,6 +77,9 @@ class RunRow(Base):
     status: Mapped[str] = mapped_column(String(32), default=RunStatus.PENDING)
     models_json: Mapped[list] = mapped_column(JSON, nullable=False)
     case_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    scoring_mode: Mapped[str] = mapped_column(
+        String(32), default="deterministic", server_default="deterministic"
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 

@@ -19,7 +19,7 @@ export default function RunDashboard() {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [scores, setScores] = useState<CaseResult[]>([]);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
-  const [datasetInfo, setDatasetInfo] = useState<{ datasetId: string; caseTopic: string } | null>(null);
+  const [datasetInfo, setDatasetInfo] = useState<{ datasetId: string; caseTopic: string; claim: string } | null>(null);
 
   const handleEvent = useCallback((event: SSEEvent) => {
     const p = event.payload as Record<string, any>;
@@ -72,6 +72,7 @@ export default function RunDashboard() {
           setDatasetInfo({
             datasetId: dataset.id,
             caseTopic: caseData.topic,
+            claim: caseData.claim,
           });
         }
       } catch (err) {
@@ -109,6 +110,12 @@ export default function RunDashboard() {
               </>
             )}
           </h1>
+          {datasetInfo?.claim && (
+            <p className="text-sm mt-1">
+              <span className="text-slate-500">Claim :</span>{" "}
+              <span className="font-bold text-green-400">{datasetInfo.claim}</span>
+            </p>
+          )}
           <p className="text-sm text-slate-500 mt-1">
             Status:{" "}
             <span
