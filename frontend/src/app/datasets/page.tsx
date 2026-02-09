@@ -4,131 +4,51 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import { AVAILABLE_MODELS } from "@/lib/constants";
 import CopernicanSystem from "@/components/CopernicanSystem";
+import { ModelSelector } from "@/components/ModelSelector";
 import type {
     Dataset,
     DatasetCase,
     KeyValidationResult,
-    KeyValidationStatus,
+    KeyValidationStatus
 } from "@/lib/types";
+import { useDatasets, useDataset } from "@/lib/queries";
+import { useKeyValidation } from "@/hooks/useKeyValidation";
 
 export default function DatasetsPage() {
-    const [datasets, setDatasets] = useState<Dataset[]>([]);
+    const { data: datasets = [], isLoading: datasetsLoading } = useDatasets();
     const [selected, setSelected] = useState<string>("");
-    const [cases, setCases] = useState<DatasetCase[]>([]);
-    const [casesLoading, setCasesLoading] = useState(false);
+
+    const { data: datasetDetail, isLoading: casesLoading } = useDataset(selected || null);
+    const cases = datasetDetail?.cases || [];
+
     const [selectedCaseId, setSelectedCaseId] = useState<string>("");
     const [selectedModel, setSelectedModel] = useState<string>("");
     const [launching, setLaunching] = useState(false);
     const [error, setError] = useState<string>("");
-    const [availableKeys, setAvailableKeys] = useState<Set<string> | null>(null);
-    const [keyValidation, setKeyValidation] = useState<
-        Map<string, KeyValidationResult>
-    >(new Map());
-    const [validationLoading, setValidationLoading] = useState(false);
-    const [validationError, setValidationError] = useState<string | null>(null);
+
     const [highlightCaseSelector, setHighlightCaseSelector] = useState(false);
-    const [highlightModelSelector, setHighlightModelSelector] = useState(false);
-    const selectRef = useRef<HTMLSelectElement>(null);
-    const modelSelectorRef = useRef<HTMLDivElement>(null);
     const caseSelectorRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        api.listDatasets().then(setDatasets).catch(console.error);
+    const [highlightModelSelector, setHighlightModelSelector] = useState(false);
+    const modelSelectorRef = useRef<HTMLDivElement>(null);
 
-        api
-            .getAvailableKeys()
-            .then((response) => {
-                setAvailableKeys(new Set(response.available_keys));
-            })
-            .catch((err) => {
-                console.error("Failed to fetch available keys:", err);
-                setAvailableKeys(new Set());
-            });
-    }, []);
-
-    const handleRefreshValidation = useCallback(async () => {
-        setValidationLoading(true);
-        setValidationError(null);
-        try {
-            const results = await api.validateKeys(true);
-            setKeyValidation(new Map(Object.entries(results)));
-        } catch (err) {
-            console.error("Failed to refresh validation:", err);
-            setValidationError("Failed to refresh key status");
-        } finally {
-            setValidationLoading(false);
-        }
-    }, []);
+    const {
+        isModelDisabled,
+        getValidationStatus,
+        keyValidation,
+        validationLoading,
+        refreshValidation
+    } = useKeyValidation();
 
     const handleSelectDataset = useCallback((dsId: string) => {
         setSelected(dsId);
         setSelectedCaseId("");
         setSelectedModel("");
-        setCases([]);
-        setCasesLoading(true);
         setHighlightCaseSelector(false);
         setHighlightModelSelector(false);
-        api
-            .getDataset(dsId)
-            .then((detail) => setCases(detail.cases))
-            .catch(console.error)
-            .finally(() => setCasesLoading(false));
     }, []);
 
-    const isModelAvailable = useCallback(
-        (model: (typeof AVAILABLE_MODELS)[0]) => {
-            if (availableKeys === null) return true;
-            return availableKeys.has(model.api_key_env);
-        },
-        [availableKeys]
-    );
 
-    const getValidationStatus = useCallback(
-        (model: (typeof AVAILABLE_MODELS)[0]): KeyValidationStatus | null => {
-            const validation = keyValidation.get(model.api_key_env);
-            return validation?.status || null;
-        },
-        [keyValidation]
-    );
-
-    const isModelDisabled = useCallback(
-        (model: (typeof AVAILABLE_MODELS)[0]): boolean => {
-            if (!isModelAvailable(model)) return true;
-            const status = getValidationStatus(model);
-            return (
-                status === "INVALID_KEY" || status === "NO_FUNDS_OR_BUDGET"
-            );
-        },
-        [isModelAvailable, getValidationStatus]
-    );
-
-    const getStatusBadge = useCallback(
-        (status: KeyValidationStatus | null): { icon: string; tooltip: string; color: string } => {
-            switch (status) {
-                case "VALID": return { icon: "✅", tooltip: "API key is valid", color: "text-green-400" };
-                case "INVALID_KEY": return { icon: "❌", tooltip: "API key is invalid or revoked", color: "text-red-400" };
-                case "NO_FUNDS_OR_BUDGET": return { icon: "💰", tooltip: "Account has no credits", color: "text-yellow-400" };
-                case "RATE_LIMIT": return { icon: "⏱️", tooltip: "Rate limited", color: "text-yellow-400" };
-                case "PERMISSION_OR_REGION": return { icon: "🚫", tooltip: "Access restricted", color: "text-orange-400" };
-                case "PROVIDER_OUTAGE": return { icon: "⚠️", tooltip: "Provider outage", color: "text-gray-400" };
-                case "TIMEOUT": return { icon: "⏳", tooltip: "Validation timed out", color: "text-gray-400" };
-                case "UNKNOWN_ERROR": return { icon: "❓", tooltip: "Unknown status", color: "text-gray-400" };
-                default: return { icon: "", tooltip: "", color: "" };
-            }
-        },
-        []
-    );
-
-    useEffect(() => {
-        if (selectedModel && availableKeys) {
-            const model = AVAILABLE_MODELS.find(
-                (m) => `${m.provider}/${m.model_name}` === selectedModel
-            );
-            if (model && !availableKeys.has(model.api_key_env)) {
-                setSelectedModel("");
-            }
-        }
-    }, [availableKeys, selectedModel]);
 
     // Scroll to and highlight Target Case when dataset is selected and cases are loaded
     useEffect(() => {
@@ -145,7 +65,7 @@ export default function DatasetsPage() {
         }
     }, [selected, casesLoading, cases.length]);
 
-    // Scroll to and highlight Inference Engine when case is selected
+    // Scroll to and highlight Inference Engine when Target Case is selected
     useEffect(() => {
         if (selectedCaseId && modelSelectorRef.current) {
             setTimeout(() => {
@@ -155,11 +75,12 @@ export default function DatasetsPage() {
                     inline: 'nearest'
                 });
                 setHighlightModelSelector(true);
-                selectRef.current?.focus();
                 setTimeout(() => setHighlightModelSelector(false), 3000);
             }, 300);
         }
     }, [selectedCaseId]);
+
+
 
     const handleLaunch = async () => {
         if (!selected || !selectedCaseId || !selectedModel) return;
@@ -167,7 +88,7 @@ export default function DatasetsPage() {
         setError("");
         try {
             const m = AVAILABLE_MODELS.find(
-                (am) => `${am.provider}/${am.model_name}` === selectedModel
+                (am) => am.id === selectedModel
             )!;
             const modelConfigs = [
                 { provider: m.provider, model_name: m.model_name, api_key_env: m.api_key_env },
@@ -230,7 +151,7 @@ export default function DatasetsPage() {
                                         className="w-full appearance-none bg-background/50 border border-primary/20 rounded-xl px-5 py-4 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
                                     >
                                         <option value="" className="bg-background">-- Select a specific case --</option>
-                                        {cases.map((c) => (
+                                        {cases.map((c: DatasetCase) => (
                                             <option key={c.case_id} value={c.case_id} className="bg-background">
                                                 {c.topic}
                                             </option>
@@ -250,7 +171,7 @@ export default function DatasetsPage() {
                     <div className="glass-panel border-white/10 bg-slate-950/40 backdrop-blur-md rounded-3xl p-6 shadow-2xl">
                         <h2 className="text-xs font-semibold text-cyan-400 mb-4 tracking-widest uppercase">Available Datasets</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {datasets.map((ds) => (
+                            {datasets.map((ds: Dataset) => (
                                 <button
                                     key={ds.id}
                                     onClick={() => handleSelectDataset(ds.id)}
@@ -271,99 +192,47 @@ export default function DatasetsPage() {
                         </div>
                     </div>
 
-                    {/* Model Configuration */}
-                    {(selected && selectedCaseId) && (
-                        <div className="glass-panel border-white/10 bg-slate-950/60 backdrop-blur-xl rounded-3xl p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    {/* Model Selector */}
+                    {selected && selectedCaseId && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <ModelSelector
+                                selectedModel={selectedModel}
+                                onSelectModel={setSelectedModel}
+                                isModelDisabled={isModelDisabled}
+                                getValidationStatus={getValidationStatus}
+                                validationLoading={validationLoading}
+                                onRefreshValidation={refreshValidation}
+                                keyValidation={keyValidation}
+                                highlighted={highlightModelSelector}
+                                containerRef={modelSelectorRef}
+                            />
 
-
-
-                            {/* Model Selector */}
-                            {selected && selectedCaseId && (
-                                <div
-                                    ref={modelSelectorRef}
-                                    className={`space-y-6 p-6 -m-6 rounded-2xl transition-all duration-500 ${highlightModelSelector
-                                        ? 'bg-gradient-to-br from-cyan-500/10 via-indigo-500/10 to-cyan-500/5 shadow-[inset_0_0_40px_rgba(34,211,238,0.2)] border-2 border-cyan-400/40'
-                                        : 'bg-transparent border-2 border-transparent'
-                                        }`}
+                            {/* Launch Button */}
+                            <div className="pt-4 flex flex-col gap-4">
+                                <button
+                                    onClick={handleLaunch}
+                                    disabled={launching || !selectedModel}
+                                    className="group relative w-full h-14 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 disabled:from-slate-800 disabled:to-slate-900 transition-all duration-300 shadow-lg hover:shadow-cyan-500/25"
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-xs font-semibold text-cyan-400 uppercase tracking-widest pl-1">Inference Engine</label>
-                                        <button
-                                            onClick={handleRefreshValidation}
-                                            disabled={validationLoading}
-                                            className="text-xs text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1"
-                                        >
-                                            {validationLoading ? "Aligning..." : "Verify Connection"}
-                                        </button>
-                                    </div>
+                                    <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-out skew-x-12 -translate-x-[150%]" />
+                                    <span className="relative flex items-center justify-center gap-2 font-medium text-lg tracking-wide text-white">
+                                        {launching ? (
+                                            <>
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Initiating Sequence...
+                                            </>
+                                        ) : (
+                                            "Launch Analysis"
+                                        )}
+                                    </span>
+                                </button>
 
-                                    <div className="relative">
-                                        <select
-                                            ref={selectRef}
-                                            value={selectedModel}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (!value) {
-                                                    setSelectedModel("");
-                                                    setError("");
-                                                    return;
-                                                }
-                                                const model = AVAILABLE_MODELS.find(
-                                                    (m) => `${m.provider}/${m.model_name}` === value
-                                                );
-                                                if (model && (!isModelAvailable(model) || isModelDisabled(model))) {
-                                                    if (selectRef.current) selectRef.current.value = selectedModel || "";
-                                                    return;
-                                                }
-                                                setSelectedModel(value);
-                                                setError("");
-                                            }}
-                                            className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
-                                        >
-                                            <option value="" className="bg-slate-950">-- Select Intelligence Model --</option>
-                                            {AVAILABLE_MODELS.map((m) => {
-                                                const key = `${m.provider}/${m.model_name}`;
-                                                const isAvailable = isModelAvailable(m);
-                                                const isDisabled = isModelDisabled(m);
-                                                const status = getValidationStatus(m);
-                                                const badge = getStatusBadge(status);
-
-                                                return (
-                                                    <option
-                                                        key={key}
-                                                        value={key}
-                                                        disabled={!isAvailable || isDisabled}
-                                                        className="bg-slate-950"
-                                                    >
-                                                        {badge.icon} {m.label}
-                                                        {!isAvailable ? " (Key Missing)" : isDisabled ? " (Unavailable)" : ""}
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/30">▼</div>
+                                {error && (
+                                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 text-sm text-center animate-in fade-in slide-in-from-top-2">
+                                        {error}
                                     </div>
-
-                                    {/* Launch Button */}
-                                    <div className="pt-4 flex flex-col gap-4">
-                                        <button
-                                            onClick={handleLaunch}
-                                            disabled={launching || !selectedModel}
-                                            className="group relative w-full h-14 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 disabled:from-slate-800 disabled:to-slate-900 transition-all duration-300 shadow-lg hover:shadow-cyan-500/25"
-                                        >
-                                            <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-out skew-x-12 -translate-x-[150%]" />
-                                            <span className="relative flex items-center justify-center gap-2 font-medium text-lg tracking-wide text-white">
-                                                {launching ? (
-                                                    <>Igniting Sequence...</>
-                                                ) : (
-                                                    <>Commence Debate</>
-                                                )}
-                                            </span>
-                                        </button>
-                                        {error && <p className="text-center text-sm text-red-400 bg-red-950/30 py-2 rounded-lg border border-red-500/20">{error}</p>}
-                                    </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

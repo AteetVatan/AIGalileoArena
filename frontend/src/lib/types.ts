@@ -35,6 +35,7 @@ export interface DatasetDetail {
 }
 
 export interface ModelConfig {
+  id?: string;
   provider: string;
   model_name: string;
   api_key_env: string;
@@ -103,12 +104,8 @@ export interface AgentMessage {
   created_at?: string;
 }
 
-export interface SSEEvent {
-  seq: number;
-  event_type: string;
-  payload: Record<string, unknown>;
-  timestamp: string;
-}
+
+// SSEEvent is now defined in eventTypes.ts with proper discriminated union types
 
 // Debate message schemas
 

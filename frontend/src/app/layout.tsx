@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit, Great_Vibes } from "next/font/google";
 import { GlobalHeader } from "@/components/GlobalHeader";
+import { QueryProvider } from "@/providers/QueryProvider";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -23,8 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${outfit.className} ${greatVibes.variable} min-h-screen antialiased relative`} suppressHydrationWarning>
-        <GlobalHeader />
-        {children}
+        <QueryProvider>
+          <GlobalHeader />
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

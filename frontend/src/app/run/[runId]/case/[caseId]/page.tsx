@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { CaseReplay } from "@/components/CaseReplay";
+import type { CaseReplayData } from "@/lib/eventTypes";
 
 export default function CaseReplayPage() {
   const { runId, caseId } = useParams<{ runId: string; caseId: string }>();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<CaseReplayData | null>(null);
 
   useEffect(() => {
     if (runId && caseId) {

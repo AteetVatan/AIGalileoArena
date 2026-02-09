@@ -162,6 +162,12 @@ class DebateController:
                     role=role, case_packet=case_pkt, failed_output=bad,
                 ),
             )
+
+            # Eagerly emit the message immediately upon generation
+            # This ensures the frontend receives it "Live" instead of waiting for all 3.
+            raw_json = parsed.model_dump_json()
+            await self._emit_msg(on_message, case_id, role, raw_json, DebatePhase.INDEPENDENT, 1)
+
             return role, parsed, cost
 
         gathered = await asyncio.gather(*[_get_proposal(r) for r in roles])
@@ -172,7 +178,6 @@ class DebateController:
             proposals[role] = parsed
             result.total_cost += cost
             result.messages.append(DebateMessage(role, raw_json, DebatePhase.INDEPENDENT, 1))
-            await self._emit_msg(on_message, case_id, role, raw_json, DebatePhase.INDEPENDENT, 1)
 
         return proposals
 

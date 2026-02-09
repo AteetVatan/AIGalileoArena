@@ -13,7 +13,7 @@ function extractTomlFromText(text: string): string | null {
   if (tomlBlockMatch) {
     return tomlBlockMatch[1].trim();
   }
-  
+
   // Check for ``` code blocks (might be TOML)
   const codeBlockMatch = text.match(/```\s*([\s\S]*?)```/);
   if (codeBlockMatch) {
@@ -23,13 +23,13 @@ function extractTomlFromText(text: string): string | null {
       return content;
     }
   }
-  
+
   // Check if entire content is TOML (no code blocks)
   const trimmed = text.trim();
   if (/^\w+\s*=/.test(trimmed) && !trimmed.startsWith("{")) {
     return trimmed;
   }
-  
+
   return null;
 }
 
@@ -40,38 +40,38 @@ function extractTomlFromText(text: string): string | null {
 function parseTomlToObject(toml: string): Record<string, unknown> | null {
   const result: Record<string, unknown> = {};
   let pos = 0;
-  
+
   // Parse key = value pairs, handling quoted strings properly
   while (pos < toml.length) {
     // Skip whitespace
     while (pos < toml.length && /\s/.test(toml[pos])) pos++;
     if (pos >= toml.length) break;
-    
+
     // Skip comments
     if (toml[pos] === '#') {
       while (pos < toml.length && toml[pos] !== '\n') pos++;
       continue;
     }
-    
+
     // Match key
     const keyMatch = toml.slice(pos).match(/^(\w+)\s*=\s*/);
     if (!keyMatch) {
       pos++;
       continue;
     }
-    
+
     const key = keyMatch[1];
     pos += keyMatch[0].length;
-    
+
     // Parse value
     let value: unknown = null;
-    
+
     // Check for quoted string
     if (toml[pos] === '"' || toml[pos] === "'") {
       const quote = toml[pos];
       pos++; // Skip opening quote
       const start = pos;
-      
+
       // Find closing quote (handle escaped quotes)
       while (pos < toml.length) {
         if (toml[pos] === quote && toml[pos - 1] !== '\\') {
@@ -79,7 +79,7 @@ function parseTomlToObject(toml: string): Record<string, unknown> | null {
         }
         pos++;
       }
-      
+
       value = toml.slice(start, pos);
       // Unescape
       value = (value as string).replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/\\n/g, '\n');
@@ -90,14 +90,14 @@ function parseTomlToObject(toml: string): Record<string, unknown> | null {
       pos++; // Skip [
       const start = pos;
       let depth = 1;
-      
+
       // Find matching ]
       while (pos < toml.length && depth > 0) {
         if (toml[pos] === '[') depth++;
         if (toml[pos] === ']') depth--;
         if (depth > 0) pos++;
       }
-      
+
       const arrayStr = toml.slice(start, pos);
       try {
         value = JSON.parse('[' + arrayStr + ']');
@@ -108,7 +108,7 @@ function parseTomlToObject(toml: string): Record<string, unknown> | null {
           .map(item => {
             const trimmed = item.trim();
             if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-                (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+              (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
               return trimmed.slice(1, -1);
             }
             return trimmed;
@@ -123,9 +123,9 @@ function parseTomlToObject(toml: string): Record<string, unknown> | null {
       while (end < toml.length && toml[end] !== '\n' && toml[end] !== '#') {
         end++;
       }
-      
+
       const valueStr = toml.slice(pos, end).trim();
-      
+
       // Try parsing as number
       if (/^-?\d+\.?\d*$/.test(valueStr)) {
         value = valueStr.includes('.') ? parseFloat(valueStr) : parseInt(valueStr, 10);
@@ -139,15 +139,15 @@ function parseTomlToObject(toml: string): Record<string, unknown> | null {
         // Default to string
         value = valueStr;
       }
-      
+
       pos = end;
     }
-    
+
     if (value !== null) {
       result[key] = value;
     }
   }
-  
+
   return Object.keys(result).length > 0 ? result : null;
 }
 
@@ -187,7 +187,7 @@ function extractJsonFromText(text: string): string | null {
       }
     }
   }
-  
+
   // If we have unclosed braces but found some structure, try to extract partial
   if (depth > 0 && lastValidEnd > start) {
     // Try to find a reasonable cutoff point
@@ -209,7 +209,7 @@ function extractJsonFromText(text: string): string | null {
       }
     }
   }
-  
+
   return null; // Unclosed object
 }
 
@@ -218,10 +218,10 @@ function extractJsonFromText(text: string): string | null {
  */
 function isTruncatedJson(content: string): boolean {
   const trimmed = content.trim();
-  
+
   // If content is exactly 2000 chars, it's almost certainly truncated (backend limit)
   if (trimmed.length === 2000) return true;
-  
+
   // If it parses successfully, it's not truncated
   try {
     JSON.parse(trimmed);
@@ -346,44 +346,44 @@ function findLastCompleteField(content: string): number {
   let inString = false;
   let escapeNext = false;
   let lastCompleteField = -1;
-  
+
   for (let i = 0; i < content.length; i++) {
     const char = content[i];
-    
+
     if (escapeNext) {
       escapeNext = false;
       continue;
     }
-    
+
     if (char === '\\') {
       escapeNext = true;
       continue;
     }
-    
+
     if (char === '"' && !escapeNext) {
       inString = !inString;
       continue;
     }
-    
+
     if (!inString) {
       if (char === '{') depth++;
       if (char === '}') depth--;
       if (char === '[') depth++;
       if (char === ']') depth--;
-      
+
       // If we're at the root object level (depth === 1) and find a comma,
       // that's the end of a complete field
       if (char === ',' && depth === 1) {
         lastCompleteField = i;
       }
-      
+
       // If we find a closing brace at root level, we have complete JSON
       if (char === '}' && depth === 0) {
         return content.length; // Complete JSON
       }
     }
   }
-  
+
   return lastCompleteField;
 }
 
@@ -393,10 +393,10 @@ function findLastCompleteField(content: string): number {
 function repairTruncatedJson(content: string): string | null {
   const trimmed = content.trim();
   if (!trimmed.startsWith("{")) return null;
-  
+
   // Strategy 1: Find the last complete field and remove everything after
   const lastCompleteField = findLastCompleteField(trimmed);
-  
+
   if (lastCompleteField > 0) {
     // We found a complete field, cut there and close the object
     const repaired = trimmed.substring(0, lastCompleteField + 1) + '}';
@@ -408,17 +408,17 @@ function repairTruncatedJson(content: string): string | null {
       // Continue to fallback strategy
     }
   }
-  
+
   // Strategy 2: Try to close incomplete structures (fallback)
   // Count open/close braces and brackets
   const openBraces = (trimmed.match(/\{/g) || []).length;
   const closeBraces = (trimmed.match(/\}/g) || []).length;
   const openBrackets = (trimmed.match(/\[/g) || []).length;
   const closeBrackets = (trimmed.match(/\]/g) || []).length;
-  
+
   // If we have unclosed structures, try to close them
   let repaired = trimmed;
-  
+
   // Close unclosed strings (find last quote and close it if needed)
   // Count quotes, but ignore escaped quotes
   let quoteCount = 0;
@@ -436,22 +436,22 @@ function repairTruncatedJson(content: string): string | null {
       quoteCount++;
     }
   }
-  
+
   if (quoteCount % 2 !== 0) {
     // Unclosed string - close it
     repaired = repaired + '"';
   }
-  
+
   // Close unclosed arrays first (they're inside objects)
   for (let i = 0; i < openBrackets - closeBrackets; i++) {
     repaired += ']';
   }
-  
+
   // Close unclosed objects
   for (let i = 0; i < openBraces - closeBraces; i++) {
     repaired += '}';
   }
-  
+
   return repaired;
 }
 
@@ -571,7 +571,7 @@ export function parseStructuredMessage(
 
   return {
     type,
-    data: parsedData as StructuredMessage,
+    data: parsedData as unknown as StructuredMessage,
     isTruncated,
   };
 }

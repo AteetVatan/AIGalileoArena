@@ -8,6 +8,7 @@ import { ROLE_COLORS } from "@/lib/constants";
 
 interface Props {
   messages: AgentMessage[];
+  sseStatus?: string;
 }
 
 function getAvatarInitial(role: string): string {
@@ -34,45 +35,112 @@ function shouldAlignRight(role: string): boolean {
   return role === "Heretic";
 }
 
-export function LiveTranscript({ messages }: Props) {
+export function LiveTranscript({ messages, sseStatus }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [displayedMessages, setDisplayedMessages] = useState<AgentMessage[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
-  const prevMessageCountRef = useRef(messages.length);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  useEffect(() => {
-    // Highlight and scroll to new message if count increased
-    if (messages.length > prevMessageCountRef.current && messages.length > 0) {
-      const newMessageIndex = messages.length - 1;
-      setHighlightedIndex(newMessageIndex);
+  // Ref to track the processed count to identify new messages
+  const processedCountRef = useRef(0);
+  // Queue to hold messages waiting to be displayed
+  const queueRef = useRef<AgentMessage[]>([]);
+  // Ref to track if the queue processing is active
+  const isProcessingRef = useRef(false);
 
-      // Scroll to the new message element
-      setTimeout(() => {
-        const newMessageElement = messageRefs.current.get(newMessageIndex);
+  // Sync props to queue
+  useEffect(() => {
+    // If messages reset (new run), clear everything
+    if (messages.length === 0) {
+      setDisplayedMessages([]);
+      queueRef.current = [];
+      processedCountRef.current = 0;
+      return;
+    }
+
+    // Identify new messages
+    if (messages.length > processedCountRef.current) {
+      const newMessages = messages.slice(processedCountRef.current);
+      queueRef.current.push(...newMessages);
+      processedCountRef.current = messages.length;
+
+      // Start processing if not already active
+      if (!isProcessingRef.current) {
+        processQueue();
+      }
+    }
+  }, [messages]);
+
+  const processQueue = () => {
+    if (queueRef.current.length === 0) {
+      isProcessingRef.current = false;
+      return;
+    }
+
+    isProcessingRef.current = true;
+    const nextMsg = queueRef.current.shift();
+
+    if (nextMsg) {
+      setDisplayedMessages((prev) => [...prev, nextMsg]);
+
+      // Determine delay
+      // If valid typing animation is desired, 500ms-800ms is good.
+      // We use 600ms as a balanced "reading" pace.
+      const delay = 600;
+
+      setTimeout(processQueue, delay);
+    } else {
+      isProcessingRef.current = false;
+    }
+  };
+
+  // Effect to highlight and scroll when a new message is displayed
+  useEffect(() => {
+    if (displayedMessages.length > 0) {
+      const newIndex = displayedMessages.length - 1;
+      setHighlightedIndex(newIndex);
+
+      // Scroll to the new message element immediately
+      requestAnimationFrame(() => {
+        const newMessageElement = messageRefs.current.get(newIndex);
         if (newMessageElement) {
           newMessageElement.scrollIntoView({
             behavior: "smooth",
             block: "nearest",
-            inline: "nearest"
+            inline: "nearest",
           });
         }
-      }, 100);
+      });
 
-      // Remove highlight after 3 seconds
-      setTimeout(() => {
+      // Remove highlight after 2 seconds
+      const clearHighlightTimer = setTimeout(() => {
         setHighlightedIndex(null);
-      }, 3000);
-    }
+      }, 2000);
 
-    prevMessageCountRef.current = messages.length;
-  }, [messages.length]);
+      return () => clearTimeout(clearHighlightTimer);
+    }
+  }, [displayedMessages.length]);
 
   return (
     <div className="glass-panel rounded-3xl p-8 relative overflow-hidden flex flex-col">
       {/* Scroll fade mask at top */}
       <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-[rgba(255,255,255,0.05)] to-transparent z-10 pointer-events-none"></div>
 
-      <h2 className="text-lg font-medium text-cyan-300 mb-6">Live Debate</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-lg font-medium text-cyan-300">Live Debate</h2>
+        <div className="flex gap-2">
+          <div className={`text-[10px] font-mono px-2 py-1 rounded border ${sseStatus === "OPEN" ? "bg-green-500/20 text-green-300 border-green-500/30" :
+            sseStatus === "CONNECTING" ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30" :
+              "bg-red-500/20 text-red-300 border-red-500/30"
+            }`}>
+            SSE: {sseStatus || "UNKNOWN"}
+          </div>
+          <div className="text-[10px] font-mono text-white/30 bg-black/20 px-2 py-1 rounded border border-white/5">
+            DEBUG: S={messages.length} D={displayedMessages.length} Q={queueRef.current.length}
+          </div>
+        </div>
+      </div>
+
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto space-y-8 pr-2 relative z-0 hide-scrollbar"
@@ -80,7 +148,7 @@ export function LiveTranscript({ messages }: Props) {
         {messages.length === 0 && (
           <p className="text-sm text-white/50 text-center py-12">Waiting for agents...</p>
         )}
-        {messages.map((msg, i) => {
+        {displayedMessages.map((msg, i) => {
           const alignRight = shouldAlignRight(msg.role);
           const avatarInitial = getAvatarInitial(msg.role);
           const avatarGradient = getAvatarGradient(msg.role);
@@ -101,8 +169,8 @@ export function LiveTranscript({ messages }: Props) {
                 }
               }}
               className={`flex gap-4 items-start group ${alignRight ? "flex-row-reverse" : ""} transition-all duration-500 ${isHighlighted
-                  ? "animate-in fade-in slide-in-from-bottom-2 duration-500"
-                  : ""
+                ? "animate-in fade-in slide-in-from-bottom-2 duration-500"
+                : ""
                 }`}
             >
               {/* Avatar */}

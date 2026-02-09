@@ -8,21 +8,22 @@ import {
   Target, AlertTriangle, CheckCircle, Clock
 } from "lucide-react";
 import { useSSE } from "@/hooks/useSSE";
-import { useRunData } from "@/hooks/useRunData";
+import { useRunDetails } from "@/lib/queries";
 import { api } from "@/lib/api";
+import type { SSEEvent } from "@/lib/eventTypes";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveTranscript } from "@/components/LiveTranscript";
 import { PressureScatter } from "@/components/PressureScatter";
 import { ConfusionMatrix } from "@/components/ConfusionMatrix";
 import { CalibrationChart } from "@/components/CalibrationChart";
 import { FailGallery } from "@/components/FailGallery";
-import type { SSEEvent, AgentMessage, CaseResult, DatasetDetail } from "@/lib/types";
+import type { AgentMessage, CaseResult, DatasetDetail } from "@/lib/types";
 
 const Earth3D = dynamic(() => import("@/components/Earth3D"), { ssr: false });
 
 export default function RunDashboard() {
   const { runId } = useParams<{ runId: string }>();
-  const { run, summary, loading } = useRunData(runId);
+  const { run, summary, runLoading, error, isError } = useRunDetails(runId);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [scores, setScores] = useState<CaseResult[]>([]);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
@@ -30,8 +31,9 @@ export default function RunDashboard() {
   const [historicalMessagesLoaded, setHistoricalMessagesLoaded] = useState(false);
 
   const handleEvent = useCallback((event: SSEEvent) => {
-    const p = event.payload as Record<string, any>;
-    switch (event.event_type) {
+    const p = event.payload;
+
+    switch (p.event_type) {
       case "agent_message":
         setMessages((prev) => [
           ...prev,
@@ -51,7 +53,7 @@ export default function RunDashboard() {
             case_id: p.case_id,
             model_key: p.model_key,
             verdict: p.verdict,
-            label: "",
+            label: "INSUFFICIENT",
             score: p.score,
             passed: p.passed,
             confidence: 0,
@@ -61,12 +63,12 @@ export default function RunDashboard() {
         ]);
         break;
       case "metrics_update":
-        setProgress({ completed: p.completed ?? 0, total: p.total ?? 0 });
+        setProgress({ completed: p.completed, total: p.total });
         break;
     }
   }, []);
 
-  useSSE(runId ? api.eventsUrl(runId) : null, handleEvent);
+  const sseStatus = useSSE(runId ? api.eventsUrl(runId) : null, handleEvent);
 
   // Reset state when runId changes
   useEffect(() => {
@@ -75,12 +77,46 @@ export default function RunDashboard() {
     setProgress({ completed: 0, total: 0 });
     setHistoricalMessagesLoaded(false);
   }, [runId]);
+  // ... (skipping lines 81-283 for brevity in this instruction, but tool handles chunks)
+
+  // Poll for messages while running (fallback for blocked SSE)
+  useEffect(() => {
+    if (!runId || run?.status === "COMPLETED" || run?.status === "FAILED") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const msgs = await api.getRunMessages(runId);
+        setMessages((prev) => {
+          if (msgs.length === prev.length) return prev;
+          return msgs.map((m) => ({
+            role: m.role,
+            model_key: m.model_key,
+            content: m.content,
+            phase: m.phase ?? undefined,
+            round: m.round ?? undefined,
+          }));
+        });
+      } catch (e) {
+        console.error("Polling error", e);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [runId, run?.status]);
 
   // Load historical messages for completed runs
   useEffect(() => {
     if (!runId || !run || historicalMessagesLoaded) return;
 
-    // If run is completed, load historical messages once
+    // If we already have messages, don't load history
+    if (messages.length > 0) {
+      setHistoricalMessagesLoaded(true);
+      return;
+    }
+
+
+
+    // If run is completed and we have no messages, load historical messages once
     if (run.status === "COMPLETED") {
       const loadHistoricalMessages = async () => {
         try {
@@ -94,15 +130,15 @@ export default function RunDashboard() {
               round: m.round ?? undefined,
             }))
           );
-          setHistoricalMessagesLoaded(true);
         } catch (err) {
           console.error("Failed to load historical messages:", err);
-          setHistoricalMessagesLoaded(true); // Mark as attempted even on error
+        } finally {
+          setHistoricalMessagesLoaded(true);
         }
       };
       loadHistoricalMessages();
     }
-  }, [runId, run?.status, historicalMessagesLoaded]);
+  }, [runId, run?.status, historicalMessagesLoaded, messages.length]);
 
   // Fetch dataset and case information when run data is available
   useEffect(() => {
@@ -127,7 +163,23 @@ export default function RunDashboard() {
     fetchDatasetInfo();
   }, [run?.dataset_id, run?.case_id]);
 
-  if (loading) {
+  if (isError || (!runLoading && !run)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen w-full bg-background relative overflow-hidden">
+        <div className="fixed inset-0 z-0 opacity-20 pointer-events-none"><Earth3D /></div>
+        <div className="relative z-10 p-8 glass-panel border-red-500/30 bg-red-950/20 max-w-md text-center backdrop-blur-md rounded-3xl">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-red-400 mb-2">Failed to Load Run</h2>
+          <p className="text-white/60 mb-6 font-light">{(error as Error)?.message || "Run data could not be retrieved. It may not exist or the service is unavailable."}</p>
+          <a href="/datasets" className="inline-block px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-colors border border-red-500/20">
+            Return to Datasets
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (runLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen w-full bg-background relative overflow-hidden">
         <div className="absolute inset-0 z-0 opacity-20">
@@ -200,10 +252,10 @@ export default function RunDashboard() {
 
               <div className="flex flex-col items-end gap-2 ml-auto">
                 <div className={`px-4 py-1.5 rounded-full border ${run?.status === "COMPLETED"
-                    ? "bg-green-500/10 border-green-500/30 text-green-400"
-                    : run?.status === "FAILED"
-                      ? "bg-red-500/10 border-red-500/30 text-red-400"
-                      : "bg-yellow-500/10 border-yellow-500/30 text-yellow-400 animate-pulse"
+                  ? "bg-green-500/10 border-green-500/30 text-green-400"
+                  : run?.status === "FAILED"
+                    ? "bg-red-500/10 border-red-500/30 text-red-400"
+                    : "bg-yellow-500/10 border-yellow-500/30 text-yellow-400 animate-pulse"
                   } text-sm font-medium flex items-center gap-2`}>
                   {run?.status === "COMPLETED" && <CheckCircle className="w-4 h-4" />}
                   {run?.status === "FAILED" && <AlertTriangle className="w-4 h-4" />}
@@ -256,7 +308,7 @@ export default function RunDashboard() {
         {/* Main Content Grid */}
         <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6 pb-12">
           <div className="lg:col-span-2 space-y-6">
-            <LiveTranscript messages={messages} />
+            <LiveTranscript messages={messages} sseStatus={sseStatus} />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="glass-panel p-1 rounded-3xl overflow-hidden">

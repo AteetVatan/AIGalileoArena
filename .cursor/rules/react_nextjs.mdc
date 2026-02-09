@@ -21,4 +21,6 @@ priority: 10
 
 - Tests: Vitest + React Testing Library; test behavior not implementation; AAA pattern; mock API calls. E2E: Playwright.
 
+- Human-Style: Zero AI trace/chatter; no obvious comments; idiomatic naming (e.g., props, el, err); pragmatic, non-robotic flow.
+
 - AI: before edits write 3–5 line plan + component/state impact; changes atomic; no drive-by refactors.

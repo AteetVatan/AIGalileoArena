@@ -11,6 +11,11 @@ import type {
   AvailableKeysResponse,
   KeyValidationResult,
 } from "./types";
+import {
+  RunInfoSchema,
+  RunSummarySchema
+} from "./schemas";
+import type { CaseReplayData } from "./eventTypes";
 
 async function fetchJSON<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`);
@@ -38,11 +43,13 @@ export const api = {
   },
 
   async getRun(runId: string): Promise<RunInfo> {
-    return fetchJSON<RunInfo>(`/runs/${runId}`);
+    const data = await fetchJSON<unknown>(`/runs/${runId}`);
+    return RunInfoSchema.parseAsync(data);
   },
 
   async getRunSummary(runId: string): Promise<RunSummary> {
-    return fetchJSON<RunSummary>(`/runs/${runId}/summary`);
+    const data = await fetchJSON<unknown>(`/runs/${runId}/summary`);
+    return RunSummarySchema.parseAsync(data);
   },
 
   async getRunCases(
@@ -58,11 +65,7 @@ export const api = {
   },
 
   async getCaseReplay(runId: string, caseId: string) {
-    return fetchJSON<{
-      case_id: string;
-      messages: { role: string; model_key: string; content: string; created_at: string }[];
-      results: Record<string, unknown>[];
-    }>(`/runs/${runId}/cases/${caseId}`);
+    return fetchJSON<CaseReplayData>(`/runs/${runId}/cases/${caseId}`);
   },
 
   async getRunMessages(runId: string) {
