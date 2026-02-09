@@ -28,8 +28,9 @@ logger = logging.getLogger("debug")
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Galileo Arena – debug server")
-    p.add_argument("--host", default="127.0.0.1")
-    p.add_argument("--port", type=int, default=8000, help="Uvicorn port")
+    default_port = int(os.environ.get("PORT", "8000"))
+    p.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))
+    p.add_argument("--port", type=int, default=default_port, help="Uvicorn port (default: 8000, or PORT env var)")
     p.add_argument("--debugpy-port", type=int, default=5678)
     p.add_argument("--wait", action="store_true", help="Wait for debugger attach")
     p.add_argument("--no-reload", action="store_true")

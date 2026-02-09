@@ -542,9 +542,35 @@ def _model_to_toml(model: BaseModel) -> str:
     return dict_to_toml(model.model_dump())
 
 
+# Module-level constants for admission values (used in multiple places)
+_ADM_NONE = AdmissionLevel.NONE.value
+_ADM_INSUFFICIENT = AdmissionLevel.INSUFFICIENT.value
+
+
+def _ensure_admission_field(data: dict[str, Any]) -> None:
+    """Ensure admission field is present in answers arrays.
+    
+    This defensive check ensures that even if TOML parsing omits the admission
+    field, we set it to a default value before Pydantic validation.
+    """
+    # Handle AnswersMessage format: {"answers": [{"q": "...", "a": "...", ...}, ...]}
+    if "answers" in data and isinstance(data["answers"], list):
+        for answer in data["answers"]:
+            if isinstance(answer, dict) and "admission" not in answer:
+                answer["admission"] = _ADM_NONE
+            elif isinstance(answer, dict) and answer.get("admission") is None:
+                answer["admission"] = _ADM_NONE
+    
+    # Handle DisputeAnswersMessage format (same structure)
+    # The check above should handle both cases
+
+
 def _try_parse(raw: str, schema_cls: type[T]) -> Optional[T]:
     try:
         data = toml_to_dict(raw)
+        # Ensure admission field is set for Answer/DisputeAnswer models
+        # This handles cases where TOML parsing omits the field
+        _ensure_admission_field(data)
         return schema_cls.model_validate(data)
     except (ValueError, ValidationError):
         return None
@@ -553,7 +579,6 @@ def _try_parse(raw: str, schema_cls: type[T]) -> Optional[T]:
 def _build_fallback(schema_cls: type[T]) -> T:
     _insuf = VerdictEnum.INSUFFICIENT.value
     _both = DebateTarget.BOTH.value
-    _adm_insuf = AdmissionLevel.INSUFFICIENT.value
 
     if schema_cls is Proposal:
         return schema_cls.model_validate({  # type: ignore[return-value]
@@ -567,7 +592,7 @@ def _build_fallback(schema_cls: type[T]) -> T:
         })
     if schema_cls is AnswersMessage:
         return schema_cls.model_validate({  # type: ignore[return-value]
-            "answers": [{"q": "?", "a": FALLBACK_ANSWER, "evidence_refs": [], "admission": _adm_insuf}],
+            "answers": [{"q": "?", "a": FALLBACK_ANSWER, "evidence_refs": [], "admission": _ADM_INSUFFICIENT}],
         })
     if schema_cls is Revision:
         return schema_cls.model_validate({  # type: ignore[return-value]
@@ -580,7 +605,7 @@ def _build_fallback(schema_cls: type[T]) -> T:
         })
     if schema_cls is DisputeAnswersMessage:
         return schema_cls.model_validate({  # type: ignore[return-value]
-            "answers": [{"q": "?", "a": FALLBACK_ANSWER, "evidence_refs": [], "admission": _adm_insuf}],
+            "answers": [{"q": "?", "a": FALLBACK_ANSWER, "evidence_refs": [], "admission": _ADM_INSUFFICIENT}],
         })
     raise ValueError(f"no fallback for {schema_cls.__name__}")
 

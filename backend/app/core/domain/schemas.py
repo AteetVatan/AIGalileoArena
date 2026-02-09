@@ -80,6 +80,17 @@ class RunMode(str, Enum):
     DEBATE = "debate"
 
 
+class ScoringMode(str, Enum):
+    ML = "ml"
+    DETERMINISTIC = "deterministic"
+
+
+class PassFlipStatus(str, Enum):
+    NONE = "none"
+    REGRESSION = "regression"
+    IMPROVEMENT = "improvement"
+
+
 # --- evidence / dataset ---
 
 class EvidencePacket(BaseModel):

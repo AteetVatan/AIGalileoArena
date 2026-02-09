@@ -11,6 +11,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.domain.schemas import PassFlipStatus, ScoringMode
 from app.infra.db.repository import Repository
 
 
@@ -27,7 +28,7 @@ class CaseComparison(BaseModel):
     verdict_changed: bool
     passed_a: bool
     passed_b: bool
-    pass_flip: str  # "none" | "regression" | "improvement"
+    pass_flip: PassFlipStatus
     evidence_overlap: float = Field(ge=0.0, le=1.0)
 
 
@@ -54,12 +55,12 @@ def _evidence_jaccard(eids_a: list[str], eids_b: list[str]) -> float:
     return len(set_a & set_b) / len(union)
 
 
-def _pass_flip(passed_a: bool, passed_b: bool) -> str:
+def _pass_flip(passed_a: bool, passed_b: bool) -> PassFlipStatus:
     if passed_a and not passed_b:
-        return "regression"
+        return PassFlipStatus.REGRESSION
     if not passed_a and passed_b:
-        return "improvement"
-    return "none"
+        return PassFlipStatus.IMPROVEMENT
+    return PassFlipStatus.NONE
 
 
 # --- main comparison ---
@@ -87,8 +88,8 @@ async def compare_runs(
     # Check scoring mode mismatch for auditability
     run_a = await repo.get_run(run_a_id)
     run_b = await repo.get_run(run_b_id)
-    mode_a = getattr(run_a, "scoring_mode", "deterministic") if run_a else "deterministic"
-    mode_b = getattr(run_b, "scoring_mode", "deterministic") if run_b else "deterministic"
+    mode_a = getattr(run_a, "scoring_mode", ScoringMode.DETERMINISTIC.value) if run_a else ScoringMode.DETERMINISTIC.value
+    mode_b = getattr(run_b, "scoring_mode", ScoringMode.DETERMINISTIC.value) if run_b else ScoringMode.DETERMINISTIC.value
     mode_mismatch = mode_a != mode_b
 
     results_a = await repo.get_run_results(run_a_id, model_key=model_key)
@@ -114,9 +115,9 @@ async def compare_runs(
         deltas.append(delta)
         flip = _pass_flip(ra.passed, rb.passed)
 
-        if flip == "regression":
+        if flip == PassFlipStatus.REGRESSION:
             regressions += 1
-        elif flip == "improvement":
+        elif flip == PassFlipStatus.IMPROVEMENT:
             improvements += 1
 
         eids_a = ra.evidence_used_json if isinstance(ra.evidence_used_json, list) else []

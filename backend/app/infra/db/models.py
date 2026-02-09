@@ -19,7 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app.core.domain.schemas import RunStatus
+from app.core.domain.schemas import RunStatus, ScoringMode
 
 
 class Base(DeclarativeBase):
@@ -78,7 +78,7 @@ class RunRow(Base):
     models_json: Mapped[list] = mapped_column(JSON, nullable=False)
     case_id: Mapped[str] = mapped_column(String(128), nullable=False)
     scoring_mode: Mapped[str] = mapped_column(
-        String(32), default="deterministic", server_default="deterministic"
+        String(32), default=ScoringMode.DETERMINISTIC.value, server_default=ScoringMode.DETERMINISTIC.value
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

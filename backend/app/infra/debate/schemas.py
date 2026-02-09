@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.domain.schemas import DebateRole, VerdictEnum
 
@@ -24,6 +24,12 @@ class AdmissionLevel(str, Enum):
     NONE = "none"
     INSUFFICIENT = "insufficient"
     UNCERTAIN = "uncertain"
+
+
+# Module-level constants for admission values (avoid hardcoded strings)
+_ADM_NONE = AdmissionLevel.NONE.value
+_ADM_INSUFFICIENT = AdmissionLevel.INSUFFICIENT.value
+_ADM_UNCERTAIN = AdmissionLevel.UNCERTAIN.value
 
 
 class DebateTarget(str, Enum):
@@ -73,7 +79,16 @@ class Answer(BaseModel):
     q: str
     a: str
     evidence_refs: list[str] = Field(default_factory=list)
-    admission: ADMISSION_LITERAL = AdmissionLevel.NONE
+    admission: ADMISSION_LITERAL = Field(default=AdmissionLevel.NONE)
+    
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_admission(cls, data: Any) -> Any:
+        """Ensure admission is never None or missing."""
+        if isinstance(data, dict):
+            if "admission" not in data or data.get("admission") is None:
+                data = {**data, "admission": _ADM_NONE}
+        return data
 
 
 class AnswersMessage(BaseModel):
@@ -105,7 +120,16 @@ class DisputeAnswer(BaseModel):
     q: str
     a: str
     evidence_refs: list[str] = Field(default_factory=list)
-    admission: ADMISSION_LITERAL = AdmissionLevel.NONE
+    admission: ADMISSION_LITERAL = Field(default=AdmissionLevel.NONE)
+    
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_admission(cls, data: Any) -> Any:
+        """Ensure admission is never None or missing."""
+        if isinstance(data, dict):
+            if "admission" not in data or data.get("admission") is None:
+                data = {**data, "admission": _ADM_NONE}
+        return data
 
 
 class DisputeAnswersMessage(BaseModel):

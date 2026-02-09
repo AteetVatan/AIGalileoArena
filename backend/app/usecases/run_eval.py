@@ -15,6 +15,7 @@ from app.core.domain.schemas import (
     EventType,
     JudgeDecision,
     RunStatus,
+    ScoringMode,
     VerdictEnum,
 )
 from app.core.domain.scoring import compute_case_score
@@ -48,7 +49,7 @@ class RunEvalUsecase:
         models_json = [{"provider": m["provider"], "model_name": m["model_name"]} for m in models]
 
         # Record scoring mode for auditability / run comparison
-        scoring_mode = "ml" if settings.ml_scoring_enabled else "deterministic"
+        scoring_mode = ScoringMode.ML.value if settings.ml_scoring_enabled else ScoringMode.DETERMINISTIC.value
 
         existing = await self._repo.get_run(run_id)
         if existing is None:
@@ -230,9 +231,9 @@ class RunEvalUsecase:
             judge_json_out: dict[str, Any] = dict(debate.judge_json) if debate.judge_json else {}
             if ml_scores is not None:
                 judge_json_out["ml_scores"] = asdict(ml_scores)
-                judge_json_out["scoring_mode"] = "ml"
+                judge_json_out["scoring_mode"] = ScoringMode.ML.value
             else:
-                judge_json_out["scoring_mode"] = "deterministic"
+                judge_json_out["scoring_mode"] = ScoringMode.DETERMINISTIC.value
 
             await self._repo.add_result(
                 run_id=run_id, case_id=case_row.case_id, model_key=model_key,

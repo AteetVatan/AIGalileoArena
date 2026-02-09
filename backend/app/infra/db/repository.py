@@ -168,7 +168,8 @@ class Repository:
         
         # Set scoring_mode explicitly (fallback to config if not provided)
         if scoring_mode is None:
-            scoring_mode = "ml" if settings.ml_scoring_enabled else "deterministic"
+            from app.core.domain.schemas import ScoringMode
+            scoring_mode = ScoringMode.ML.value if settings.ml_scoring_enabled else ScoringMode.DETERMINISTIC.value
         
         row = RunRow(
             run_id=run_id,

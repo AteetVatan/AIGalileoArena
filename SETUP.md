@@ -238,6 +238,18 @@ alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+> **Port Configuration:** The backend defaults to port 8000, which matches the frontend's default API URL. If you need to run on a different port, you can use an environment variable:
+> 
+> ```bash
+> # Linux / macOS
+> PORT=${PORT:-8000} uvicorn app.main:app --reload --host 0.0.0.0 --port $PORT
+> 
+> # Windows PowerShell
+> $env:PORT="8080"; uvicorn app.main:app --reload --host 0.0.0.0 --port $env:PORT
+> ```
+> 
+> **Important:** If you change the backend port, ensure you set `NEXT_PUBLIC_API_URL` in the frontend environment to match (see [Troubleshooting](#11-troubleshooting) for details).
+
 On startup the backend will:
 - Create/verify database tables
 - Load all datasets into PostgreSQL
@@ -1104,11 +1116,74 @@ alembic upgrade head
 
 > **Note:** Make sure your virtual environment is activated before running Alembic commands.
 
+### Testing Backend Connection
+
+Before troubleshooting, verify the backend is accessible:
+
+**1. Test Health Endpoint:**
+```bash
+# Linux / macOS / Windows (with curl)
+curl http://localhost:8000/health
+
+# Expected response: {"status":"ok"}
+```
+
+**2. Test Datasets Endpoint:**
+```bash
+curl http://localhost:8000/datasets
+
+# Expected response: JSON array of datasets
+```
+
+**3. Test from Frontend:**
+- Open browser DevTools (F12) → Network tab
+- Navigate to the datasets page
+- Check for failed requests to `/datasets`
+- Verify the request URL matches your backend port
+
+**4. Verify CORS Headers:**
+```bash
+curl -I -X OPTIONS http://localhost:8000/datasets \
+  -H "Origin: http://localhost:3000" \
+  -H "Access-Control-Request-Method: GET"
+
+# Should include: Access-Control-Allow-Origin: *
+```
+
 ### Frontend cannot reach backend
 
-- Verify backend is running on port 8000.
-- Check `NEXT_PUBLIC_API_URL` is set correctly (default: `http://localhost:8000`).
+**Port Mismatch Issue:**
+
+The frontend defaults to connecting to `http://localhost:8000`. If you run the backend on a different port (e.g., 8080), you'll see "Failed to fetch" errors.
+
+**Solution Options:**
+
+1. **Run backend on port 8000 (recommended for local dev):**
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+2. **Configure frontend to match backend port:**
+   - Set `NEXT_PUBLIC_API_URL` environment variable before starting Next.js:
+     ```bash
+     # Windows PowerShell
+     $env:NEXT_PUBLIC_API_URL="http://localhost:8080"; npm run dev
+     
+     # Linux / macOS
+     NEXT_PUBLIC_API_URL=http://localhost:8080 npm run dev
+     ```
+   - Or create/update `frontend/.env.local`:
+     ```
+     NEXT_PUBLIC_API_URL=http://localhost:8080
+     ```
+   - **Important:** Next.js requires a restart after changing `NEXT_PUBLIC_API_URL` (it's a build-time variable).
+
+**General Checks:**
+- Verify backend is running on the expected port.
+- Check `NEXT_PUBLIC_API_URL` matches the backend port (default: `http://localhost:8000`).
 - `next.config.ts` rewrites `/api/*` to the backend — ensure no port conflicts.
+- Test backend health: `curl http://localhost:8000/health`
+- Test datasets endpoint: `curl http://localhost:8000/datasets`
 
 ### Docker build fails on Windows
 

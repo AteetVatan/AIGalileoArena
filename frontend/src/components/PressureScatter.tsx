@@ -32,24 +32,30 @@ export function PressureScatter({ results }: Props) {
   if (data.length === 0) return null;
 
   return (
-    <div className="card-glow">
-      <h2 className="text-lg font-bold text-cyan-400 mb-3">Score Distribution</h2>
+    <div className="glass-panel rounded-3xl p-6">
+      <h2 className="text-lg font-medium text-cyan-300 mb-4">Score Distribution</h2>
       <ResponsiveContainer width="100%" height={250}>
         <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
           <XAxis
             dataKey="x"
             name="Case #"
-            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
           />
           <YAxis
             dataKey="y"
             name="Score"
             domain={[0, 100]}
-            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
           />
           <Tooltip
-            contentStyle={{ background: "#1e293b", border: "1px solid #334155" }}
+            contentStyle={{
+              background: "rgba(255, 255, 255, 0.1)",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              borderRadius: "12px",
+              color: "#fff",
+            }}
           />
           <Legend />
           <Scatter name="Pass" data={passData} fill="#34d399" />

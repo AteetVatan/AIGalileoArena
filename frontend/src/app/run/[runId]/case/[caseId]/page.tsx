@@ -15,7 +15,13 @@ export default function CaseReplayPage() {
     }
   }, [runId, caseId]);
 
-  if (!data) return <div className="text-slate-400 py-10">Loading replay...</div>;
+  if (!data) {
+    return (
+      <div className="glass-panel rounded-3xl p-12 text-center">
+        <p className="text-white/60">Loading replay...</p>
+      </div>
+    );
+  }
 
   return <CaseReplay data={data} />;
 }

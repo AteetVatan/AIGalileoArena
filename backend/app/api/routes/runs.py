@@ -312,6 +312,27 @@ async def get_case_replay(
     }
 
 
+@router.get("/{run_id}/messages")
+async def get_run_messages(
+    run_id: str,
+    session: AsyncSession = Depends(get_session),
+):
+    """Get all historical messages for a run (for completed runs)."""
+    repo = Repository(session)
+    messages = await repo.get_all_run_messages(run_id)
+    return [
+        {
+            "role": m.role,
+            "model_key": m.model_key,
+            "content": m.content,
+            "phase": m.phase,
+            "round": m.round,
+            "created_at": m.created_at.isoformat(),
+        }
+        for m in messages
+    ]
+
+
 @router.get("/{run_id}/events")
 async def stream_events(run_id: str):
     return StreamingResponse(

@@ -104,21 +104,69 @@ class PathShorteningFilter(logging.Filter):
         return True
 
 
+class HotReloadCancelledErrorFilter(logging.Filter):
+    """Filter to suppress CancelledError logs during hot reload.
+    
+    These errors are expected when uvicorn reloads due to file changes
+    and should not be logged as ERROR level.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Check if this is a CancelledError from uvicorn's lifespan handling
+        if record.levelno >= logging.ERROR:
+            exc_info = record.exc_info
+            if exc_info and exc_info[0] is not None:
+                import asyncio
+                if issubclass(exc_info[0], asyncio.CancelledError):
+                    # Check if it's from uvicorn lifespan or starlette routing
+                    # by examining the exception message or traceback
+                    exc_text = ""
+                    if hasattr(record, "getMessage"):
+                        exc_text = record.getMessage()
+                    elif hasattr(record, "msg"):
+                        exc_text = str(record.msg)
+                    
+                    # Also check the traceback if available
+                    traceback_text = ""
+                    if exc_info[2] is not None:
+                        import traceback as tb
+                        traceback_text = "".join(tb.format_tb(exc_info[2]))
+                    
+                    combined_text = (exc_text + traceback_text).lower()
+                    if any(keyword in combined_text for keyword in [
+                        "lifespan",
+                        "receive_queue",
+                        "starlette/routing.py",
+                        "starlette\\routing.py",  # Windows path
+                        "uvicorn/lifespan",
+                        "uvicorn\\lifespan",  # Windows path
+                        "asyncio/queues.py",
+                        "asyncio\\queues.py",  # Windows path
+                    ]):
+                        # Downgrade to DEBUG level instead of suppressing entirely
+                        record.levelno = logging.DEBUG
+                        record.levelname = "DEBUG"
+        return True
+
+
 def configure_logging(formatter: logging.Formatter | None = None) -> None:
     if formatter is None:
         formatter = ShortPathFormatter("%(asctime)s %(levelname)-8s [%(name)s] %(message)s")
 
     ws_root = formatter.workspace_root if isinstance(formatter, ShortPathFormatter) else _detect_workspace_root()
     path_filter = PathShorteningFilter(ws_root)
+    hot_reload_filter = HotReloadCancelledErrorFilter()
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     handler.addFilter(path_filter)
+    handler.addFilter(hot_reload_filter)
 
     root = logging.getLogger()
     root.handlers.clear()
     root.addHandler(handler)
     root.addFilter(path_filter)
+    root.addFilter(hot_reload_filter)
 
     # uvicorn / watchfiles have their own handlers -- override them
     for name in ["uvicorn", "uvicorn.error", "uvicorn.access", "watchfiles", "watchfiles.main"]:
@@ -126,4 +174,5 @@ def configure_logging(formatter: logging.Formatter | None = None) -> None:
         lg.handlers.clear()
         lg.addHandler(handler)
         lg.addFilter(path_filter)
+        lg.addFilter(hot_reload_filter)
         lg.propagate = False

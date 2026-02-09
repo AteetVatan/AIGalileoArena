@@ -2,17 +2,183 @@
 @tailwind components;
 @tailwind utilities;
 
-html { scroll-behavior: smooth; }
+@layer base {
+  :root {
+    /* Background Colors */
+    --background: 220 25% 8%;
+    --foreground: 210 40% 96%;
 
-body {
-  @apply bg-slate-950 text-slate-50 antialiased;
+    /* Card Colors */
+    --card: 220 25% 11%;
+    --card-foreground: 210 40% 96%;
+
+    /* Popover Colors */
+    --popover: 220 25% 11%;
+    --popover-foreground: 210 40% 96%;
+
+    /* Primary - Vibrant Electric Blue */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 220 20% 14%;
+    --secondary-foreground: 210 40% 90%;
+
+    /* Muted */
+    --muted: 220 20% 14%;
+    --muted-foreground: 215 20% 50%;
+
+    /* Accent - Same as Primary */
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive - Red */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 220 15% 16%;
+    --input: 220 15% 16%;
+    --ring: 217 91% 60%;
+
+    /* Border Radius */
+    --radius: 1rem;
+
+    /* Glass Effect */
+    --glass: 220 25% 12%;
+    --glass-border: 220 15% 20%;
+
+    /* Status Colors */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+
+    /* Sidebar Colors */
+    --sidebar-background: 220 30% 6%;
+    --sidebar-foreground: 215 20% 45%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 12%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 220 15% 10%;
+    --sidebar-ring: 217 91% 60%;
+  }
 }
 
-/* Subtle glow for cards */
-.card-glow {
-  @apply border border-slate-800 bg-slate-900/60 rounded-xl p-5 backdrop-blur-sm;
-  transition: border-color 0.2s;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  }
 }
-.card-glow:hover {
-  @apply border-cyan-600/40;
+
+@layer components {
+
+  /* Glass Card - Primary glass effect */
+  .glass-card {
+    @apply rounded-xl border bg-card/60 backdrop-blur-xl;
+    border-color: hsl(var(--glass-border));
+  }
+
+  /* Blue Glow Effect */
+  .glow-blue {
+    box-shadow: 0 0 20px hsl(217 91% 60% / 0.15), 0 0 60px hsl(217 91% 60% / 0.05);
+  }
+
+  /* Glass Panel - Alternative glass style */
+  .glass-panel {
+    background: hsl(var(--glass) / 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Glass Button */
+  .glass-button {
+    background: hsl(var(--glass) / 0.4);
+    backdrop-filter: blur(4px);
+    border: 1px solid hsl(var(--glass-border));
+    transition: all 0.3s ease;
+  }
+
+  .glass-button:hover {
+    background: hsl(var(--glass) / 0.8);
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+  }
+
+  /* Card Glow - Hoverable card with glow */
+  .card-glow {
+    @apply glass-panel rounded-3xl p-5;
+    transition: all 0.3s ease;
+  }
+
+  .card-glow:hover {
+    background: hsl(var(--glass) / 0.8);
+    transform: scale(1.02);
+  }
+
+  /* Hide Scrollbar */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Mobile-specific utilities */
+  .mobile-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .mobile-text-sm {
+    @apply text-sm sm:text-base;
+  }
+
+  /* Touch-friendly tap targets - minimum 44x44px */
+  .tap-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Responsive container with max-width */
+  .container-responsive {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* Aurora Background */
+.aurora-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  overflow: hidden;
+  background: hsl(var(--background));
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.6;
+}
+
+/* Disabled select options */
+select option:disabled {
+  color: hsl(var(--muted-foreground)) !important;
+  background-color: hsl(var(--secondary)) !important;
+  opacity: 0.5;
+  cursor: not-allowed;
 }

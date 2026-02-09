@@ -25,13 +25,13 @@ export function formatStructuredMessage(
     const Header = () => (
         <div className="flex items-center gap-2 mb-2">
             <span
-                className={`text-xs font-bold ${ROLE_COLORS[role] ?? "text-slate-400"}`}
+                className={`text-xs font-medium ${ROLE_COLORS[role] ?? "text-white/60"}`}
             >
                 {role}
             </span>
-            <span className="text-xs text-slate-600 font-mono">{modelKey}</span>
+            <span className="text-xs text-white/50 font-mono">{modelKey}</span>
             {isTruncated && (
-                <span className="bg-orange-900/40 text-orange-400 text-xs px-2 py-1 rounded">
+                <span className="bg-orange-500/20 text-orange-300 text-xs px-2 py-1 rounded-full border border-orange-500/30">
                     ⚠️ Truncated
                 </span>
             )}
@@ -57,7 +57,7 @@ export function formatStructuredMessage(
             return (
                 <div>
                     <Header />
-                    <p className="text-xs text-red-400">Invalid message type</p>
+                    <p className="text-xs text-red-300">Invalid message type</p>
                 </div>
             );
     }
@@ -69,13 +69,13 @@ export function formatStructuredMessage(
 function VerdictBadge({ verdict }: { verdict: string }) {
     const colors =
         verdict === "SUPPORTED"
-            ? "bg-green-900/40 text-green-400"
+            ? "bg-green-500/20 text-green-300 border border-green-500/30"
             : verdict === "REFUTED"
-                ? "bg-red-900/40 text-red-400"
-                : "bg-yellow-900/40 text-yellow-400";
+                ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                : "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30";
 
     return (
-        <span className={`text-xs font-bold px-2 py-1 rounded ${colors}`}>
+        <span className={`text-xs font-medium px-2 py-1 rounded-full ${colors}`}>
             {verdict}
         </span>
     );
@@ -327,16 +327,16 @@ function formatProposal(
             <Header />
             <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Verdict:</span>
+                    <span className="text-xs text-white/60">Verdict:</span>
                     <VerdictBadge verdict={data.proposed_verdict} />
                 </div>
 
                 {data.key_points && data.key_points.length > 0 && (
                     <div>
-                        <span className="text-xs text-slate-400 mb-1 block">
+                        <span className="text-xs text-white/60 mb-1 block">
                             {extractKeyPointsLabel(data.key_points)}
                         </span>
-                        <ul className="list-disc list-inside text-xs text-slate-300 space-y-1 ml-2">
+                        <ul className="list-disc list-inside text-xs text-white/80 space-y-1 ml-2">
                             {data.key_points.map((point, i) => (
                                 <li key={i}>{point}</li>
                             ))}
@@ -346,10 +346,10 @@ function formatProposal(
 
                 {data.uncertainties && data.uncertainties.length > 0 && (
                     <details className="mt-2">
-                        <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">
+                        <summary className="text-xs text-white/50 cursor-pointer hover:text-white/70 transition">
                             Uncertainties ({data.uncertainties.length})
                         </summary>
-                        <ul className="list-disc list-inside text-xs text-slate-400 space-y-1 ml-2 mt-1">
+                        <ul className="list-disc list-inside text-xs text-white/60 space-y-1 ml-2 mt-1">
                             {data.uncertainties.map((unc, i) => (
                                 <li key={i}>{unc}</li>
                             ))}
@@ -360,10 +360,10 @@ function formatProposal(
                 {data.what_would_change_my_mind &&
                     data.what_would_change_my_mind.length > 0 && (
                         <details className="mt-2">
-                            <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">
+                            <summary className="text-xs text-white/50 cursor-pointer hover:text-white/70 transition">
                                 What Would Change My Mind ({data.what_would_change_my_mind.length})
                             </summary>
-                            <ul className="list-disc list-inside text-xs text-slate-400 space-y-1 ml-2 mt-1">
+                            <ul className="list-disc list-inside text-xs text-white/60 space-y-1 ml-2 mt-1">
                                 {data.what_would_change_my_mind.map((item, i) => (
                                     <li key={i}>{item}</li>
                                 ))}
@@ -373,14 +373,14 @@ function formatProposal(
 
                 {data.evidence_used && data.evidence_used.length > 0 && (
                     <details className="mt-2">
-                        <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">
+                        <summary className="text-xs text-white/50 cursor-pointer hover:text-white/70 transition">
                             Evidence ({data.evidence_used.length})
                         </summary>
                         <div className="flex flex-wrap gap-1 mt-1 ml-2">
                             {data.evidence_used.map((eid, i) => (
                                 <span
                                     key={i}
-                                    className="bg-slate-700/50 text-slate-300 font-mono text-xs px-2 py-1 rounded"
+                                    className="glass-button text-white/80 font-mono text-xs px-2 py-1 rounded-full"
                                 >
                                     {eid}
                                 </span>
@@ -405,14 +405,14 @@ function formatQuestions(
             <Header />
             <div className="space-y-3">
                 {data.questions.map((q, i) => (
-                    <div key={i} className="bg-slate-700/30 rounded p-2">
+                    <div key={i} className="glass-button rounded-xl p-3">
                         <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs text-slate-500">To:</span>
-                            <span className="text-xs font-semibold text-cyan-400">
+                            <span className="text-xs text-white/50">To:</span>
+                            <span className="text-xs font-medium text-cyan-300">
                                 {q.to}
                             </span>
                         </div>
-                        <p className="text-xs text-slate-300 mb-2">{q.q}</p>
+                        <p className="text-xs text-white/80 mb-2">{q.q}</p>
                     </div>
                 ))}
             </div>
@@ -428,9 +428,9 @@ function formatAnswers(
     Header: () => JSX.Element
 ): JSX.Element {
     const admissionColors: Record<string, string> = {
-        none: "bg-slate-700/50 text-slate-300",
-        insufficient: "bg-yellow-900/40 text-yellow-400",
-        uncertain: "bg-orange-900/40 text-orange-400",
+        none: "bg-white/10 text-white/70",
+        insufficient: "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30",
+        uncertain: "bg-orange-500/20 text-orange-300 border border-orange-500/30",
     };
 
     return (
@@ -438,23 +438,23 @@ function formatAnswers(
             <Header />
             <div className="space-y-3">
                 {data.answers.map((a, i) => (
-                    <div key={i} className="bg-slate-700/30 rounded p-2">
+                    <div key={i} className="glass-button rounded-xl p-3">
                         <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs text-slate-500">Admission:</span>
+                            <span className="text-xs text-white/50">Admission:</span>
                             <span
-                                className={`text-xs px-2 py-0.5 rounded ${admissionColors[a.admission] || admissionColors.none
+                                className={`text-xs px-2 py-1 rounded-full ${admissionColors[a.admission] || admissionColors.none
                                     }`}
                             >
                                 {a.admission}
                             </span>
                         </div>
                         <div className="mb-2">
-                            <span className="text-xs text-slate-500">Q:</span>
-                            <p className="text-xs text-slate-400 italic ml-1">{a.q}</p>
+                            <span className="text-xs text-white/50">Q:</span>
+                            <p className="text-xs text-white/60 italic ml-1">{a.q}</p>
                         </div>
                         <div className="mb-2">
-                            <span className="text-xs text-slate-500">A:</span>
-                            <p className="text-xs text-slate-300 ml-1">{a.a}</p>
+                            <span className="text-xs text-white/50">A:</span>
+                            <p className="text-xs text-white/80 ml-1">{a.a}</p>
                         </div>
                     </div>
                 ))}
@@ -475,10 +475,10 @@ function formatRevision(
             <Header />
             <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Final Verdict:</span>
+                    <span className="text-xs text-white/60">Final Verdict:</span>
                     <VerdictBadge verdict={data.final_proposed_verdict} />
                     {data.confidence !== undefined && (
-                        <span className="text-xs text-slate-400 ml-2">
+                        <span className="text-xs text-white/60 ml-2">
                             Confidence: {Math.round(data.confidence * 100)}%
                         </span>
                     )}
@@ -486,10 +486,10 @@ function formatRevision(
 
                 {data.what_i_changed && data.what_i_changed.length > 0 && (
                     <div>
-                        <span className="text-xs text-slate-400 mb-1 block">
+                        <span className="text-xs text-white/60 mb-1 block">
                             What I Changed:
                         </span>
-                        <ul className="list-disc list-inside text-xs text-slate-300 space-y-1 ml-2">
+                        <ul className="list-disc list-inside text-xs text-white/80 space-y-1 ml-2">
                             {data.what_i_changed.map((change, i) => (
                                 <li key={i}>{change}</li>
                             ))}
@@ -500,10 +500,10 @@ function formatRevision(
                 {data.remaining_disagreements &&
                     data.remaining_disagreements.length > 0 && (
                         <div>
-                            <span className="text-xs text-slate-400 mb-1 block">
+                            <span className="text-xs text-white/60 mb-1 block">
                                 Remaining Disagreements:
                             </span>
-                            <ul className="list-disc list-inside text-xs text-slate-400 space-y-1 ml-2">
+                            <ul className="list-disc list-inside text-xs text-white/60 space-y-1 ml-2">
                                 {data.remaining_disagreements.map((dis, i) => (
                                     <li key={i}>{dis}</li>
                                 ))}
@@ -527,8 +527,8 @@ function formatDisputeQuestions(
             <Header />
             <div className="space-y-3">
                 {data.questions.map((q, i) => (
-                    <div key={i} className="bg-slate-700/30 rounded p-2">
-                        <p className="text-xs text-slate-300 mb-2">{q.q}</p>
+                    <div key={i} className="glass-button rounded-xl p-3">
+                        <p className="text-xs text-white/80 mb-2">{q.q}</p>
                     </div>
                 ))}
             </div>
@@ -544,9 +544,9 @@ function formatDisputeAnswers(
     Header: () => JSX.Element
 ): JSX.Element {
     const admissionColors: Record<string, string> = {
-        none: "bg-slate-700/50 text-slate-300",
-        insufficient: "bg-yellow-900/40 text-yellow-400",
-        uncertain: "bg-orange-900/40 text-orange-400",
+        none: "bg-white/10 text-white/70",
+        insufficient: "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30",
+        uncertain: "bg-orange-500/20 text-orange-300 border border-orange-500/30",
     };
 
     return (
@@ -554,23 +554,23 @@ function formatDisputeAnswers(
             <Header />
             <div className="space-y-3">
                 {data.answers.map((a, i) => (
-                    <div key={i} className="bg-slate-700/30 rounded p-2">
+                    <div key={i} className="glass-button rounded-xl p-3">
                         <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs text-slate-500">Admission:</span>
+                            <span className="text-xs text-white/50">Admission:</span>
                             <span
-                                className={`text-xs px-2 py-0.5 rounded ${admissionColors[a.admission] || admissionColors.none
+                                className={`text-xs px-2 py-1 rounded-full ${admissionColors[a.admission] || admissionColors.none
                                     }`}
                             >
                                 {a.admission}
                             </span>
                         </div>
                         <div className="mb-2">
-                            <span className="text-xs text-slate-500">Q:</span>
-                            <p className="text-xs text-slate-400 italic ml-1">{a.q}</p>
+                            <span className="text-xs text-white/50">Q:</span>
+                            <p className="text-xs text-white/60 italic ml-1">{a.q}</p>
                         </div>
                         <div className="mb-2">
-                            <span className="text-xs text-slate-500">A:</span>
-                            <p className="text-xs text-slate-300 ml-1">{a.a}</p>
+                            <span className="text-xs text-white/50">A:</span>
+                            <p className="text-xs text-white/80 ml-1">{a.a}</p>
                         </div>
                     </div>
                 ))}
@@ -591,10 +591,10 @@ function formatJudgeDecision(
             <Header />
             <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Verdict:</span>
+                    <span className="text-xs text-white/60">Verdict:</span>
                     <VerdictBadge verdict={data.verdict} />
                     {data.confidence !== undefined && (
-                        <span className="text-xs text-slate-400 ml-2">
+                        <span className="text-xs text-white/60 ml-2">
                             Confidence: {Math.round(data.confidence * 100)}%
                         </span>
                     )}
@@ -602,8 +602,8 @@ function formatJudgeDecision(
 
                 {data.reasoning && (
                     <div>
-                        <span className="text-xs text-slate-400 mb-1 block">Reasoning:</span>
-                        <p className="text-xs text-slate-300 leading-relaxed">
+                        <span className="text-xs text-white/60 mb-1 block">Reasoning:</span>
+                        <p className="text-xs text-white/80 leading-relaxed">
                             {data.reasoning}
                         </p>
                     </div>

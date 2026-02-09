@@ -206,3 +206,30 @@ export interface ParsedMessage {
   data: StructuredMessage;
   isTruncated: boolean;
 }
+
+// API Key Validation Types
+export type KeyValidationStatus =
+  | "VALID"
+  | "INVALID_KEY"
+  | "NO_FUNDS_OR_BUDGET"
+  | "RATE_LIMIT"
+  | "PERMISSION_OR_REGION"
+  | "PROVIDER_OUTAGE"
+  | "TIMEOUT"
+  | "UNKNOWN_ERROR";
+
+export interface KeyValidationResult {
+  status: KeyValidationStatus;
+  provider: string;
+  api_key_env: string;
+  error_message: string | null;
+  request_id: string | null;
+  http_status: number | null;
+  validated_at: string | null;
+}
+
+export interface AvailableKeysResponse {
+  available_keys: string[];
+  validation?: Record<string, KeyValidationResult>;
+  validation_error?: string;
+}

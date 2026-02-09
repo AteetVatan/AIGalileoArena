@@ -14,27 +14,27 @@ export function FailGallery({ runId, results }: Props) {
   if (failures.length === 0) return null;
 
   return (
-    <div className="card-glow">
-      <h2 className="text-lg font-bold text-red-400 mb-3">
+    <div className="glass-panel rounded-3xl p-6">
+      <h2 className="text-lg font-medium text-red-300 mb-4">
         Recent Failures ({failures.length})
       </h2>
-      <div className="space-y-2">
+      <div className="space-y-3">
         {failures.map((f, i) => (
           <Link
             key={i}
             href={`/run/${runId}/case/${f.case_id}`}
-            className="block p-2 bg-slate-800/50 rounded hover:bg-slate-700/50 transition"
+            className="block glass-button rounded-xl p-3 transition"
           >
             <div className="flex justify-between items-center">
-              <span className="text-xs font-mono text-slate-400">{f.case_id}</span>
-              <span className="text-xs text-red-400 font-bold">
+              <span className="text-xs font-mono text-white/60">{f.case_id}</span>
+              <span className="text-xs text-red-300 font-medium">
                 {f.score}/100
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-white/50 mt-2">
               {f.model_key} &middot; {f.verdict}
               {f.critical_fail_reason && (
-                <span className="text-red-500 ml-1">
+                <span className="text-red-300 ml-2">
                   CRITICAL: {f.critical_fail_reason.slice(0, 40)}
                 </span>
               )}
