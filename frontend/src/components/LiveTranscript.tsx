@@ -41,7 +41,7 @@ export function LiveTranscript({ messages }: Props) {
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   useEffect(() => {
-    // Highlight new message if count increased
+    // Highlight and scroll to new message if count increased
     if (messages.length > prevMessageCountRef.current && messages.length > 0) {
       const newMessageIndex = messages.length - 1;
       setHighlightedIndex(newMessageIndex);

@@ -56,7 +56,7 @@ export default function Home() {
               </div>
 
               {/* Get Started Button */}
-              <div className="absolute bottom-4 right-4 sm:top-1/2 sm:right-4 sm:-translate-y-1/2 lg:top-1/2 lg:right-4 lg:-translate-y-1/2 z-20">
+              <div className="absolute top-4 right-4 sm:top-1/2 sm:right-4 sm:-translate-y-1/2 lg:top-1/2 lg:right-4 lg:-translate-y-1/2 z-20">
                 <a
                   href="/datasets"
                   className="group relative inline-flex h-10 sm:h-12 items-center justify-center overflow-hidden rounded-full bg-slate-950 px-6 sm:px-8 font-medium text-slate-200 transition-all duration-300 hover:bg-slate-950/50 hover:text-white hover:shadow-[0_0_40px_rgba(59,130,246,0.6)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50"
@@ -72,7 +72,29 @@ export default function Home() {
                 </a>
               </div>
 
+              {/* Galileo Signature */}
+              {/* Galileo Tribute Card */}
+              <div className="hidden sm:block absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-10 max-w-[280px] sm:max-w-[320px] pointer-events-none select-none text-right">
+                <div className="glass-card p-5 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-end gap-3 pointer-events-auto shadow-2xl relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
+                  <div className="flex items-center gap-3 mb-1 z-10">
+                    <span className="text-xs font-bold tracking-[0.2em] text-cyan-400 uppercase">Agentic Arena</span>
+                    <div className="h-px w-8 bg-gradient-to-l from-cyan-400 to-transparent"></div>
+                  </div>
+
+                  <p className="text-sm text-slate-300 font-serif leading-relaxed text-right z-10">
+                    Galilaeus pro Copernico stetit. Pressus ab <span className="text-cyan-300 font-semibold drop-shadow-[0_0_8px_rgba(103,232,249,0.3)]">orthodoxis</span> et <span className="text-cyan-300 font-semibold drop-shadow-[0_0_8px_rgba(103,232,249,0.3)]">scepticis</span>, voce cessit—non mente. Scientia tamen perseverat.
+                  </p>
+
+                  <div className="mt-1 opacity-90 z-10 relative">
+                    <div className="absolute -inset-4 bg-gradient-to-r from-transparent via-white/5 to-transparent blur-xl -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                    <span className="font-great-vibes text-4xl text-white -rotate-6 block tracking-wide" style={{ fontFamily: 'var(--font-great-vibes)' }}>
+                      Galileo Galilei
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -193,29 +215,6 @@ export default function Home() {
                     </button>
                   </div>
                 ))}
-              </div>
-
-              {/* Galileo Tribute Card - Moved to Bottom */}
-              <div className="mt-6 w-full">
-                <div className="glass-card p-5 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center sm:items-end gap-3 shadow-2xl relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-
-                  <div className="flex items-center gap-3 mb-1 z-10">
-                    <span className="text-xs font-bold tracking-[0.2em] text-cyan-400 uppercase">Agentic Arena</span>
-                    <div className="h-px w-8 bg-gradient-to-l from-cyan-400 to-transparent"></div>
-                  </div>
-
-                  <p className="text-sm text-slate-300 font-serif leading-relaxed text-center sm:text-right z-10">
-                    Galilaeus pro Copernico stetit. Pressus ab <span className="text-cyan-300 font-semibold drop-shadow-[0_0_8px_rgba(103,232,249,0.3)]">orthodoxis</span> et <span className="text-cyan-300 font-semibold drop-shadow-[0_0_8px_rgba(103,232,249,0.3)]">skepticis</span>, voce cessit—non mente. Scientia tamen perseverat.
-                  </p>
-
-                  <div className="mt-1 opacity-90 z-10 relative">
-                    <div className="absolute -inset-4 bg-gradient-to-r from-transparent via-white/5 to-transparent blur-xl -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                    <span className="font-great-vibes text-4xl text-white -rotate-6 block tracking-wide" style={{ fontFamily: 'var(--font-great-vibes)' }}>
-                      Galileo Galilei
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

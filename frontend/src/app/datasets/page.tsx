@@ -130,33 +130,34 @@ export default function DatasetsPage() {
         }
     }, [availableKeys, selectedModel]);
 
-    // Highlight and scroll to Target Case when dataset is selected
+    // Scroll to and highlight Target Case when dataset is selected and cases are loaded
     useEffect(() => {
-        if (selected && caseSelectorRef.current && !casesLoading) {
+        if (selected && caseSelectorRef.current && !casesLoading && cases.length > 0) {
             setTimeout(() => {
                 caseSelectorRef.current?.scrollIntoView({
                     behavior: 'smooth',
-                    block: 'nearest'
+                    block: 'center',
+                    inline: 'nearest'
                 });
                 setHighlightCaseSelector(true);
                 setTimeout(() => setHighlightCaseSelector(false), 3000);
             }, 300);
         }
-    }, [selected, casesLoading]);
+    }, [selected, casesLoading, cases.length]);
 
-    // Highlight and scroll to Inference Engine when case is selected
+    // Scroll to and highlight Inference Engine when case is selected
     useEffect(() => {
         if (selectedCaseId && modelSelectorRef.current) {
             setTimeout(() => {
-                // Scroll to absolute bottom of page to ensure entire block is visible
-                window.scrollTo({
-                    top: document.documentElement.scrollHeight + 200,
-                    behavior: 'smooth'
+                modelSelectorRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest'
                 });
                 setHighlightModelSelector(true);
                 selectRef.current?.focus();
                 setTimeout(() => setHighlightModelSelector(false), 3000);
-            }, 600);
+            }, 300);
         }
     }, [selectedCaseId]);
 
@@ -192,28 +193,28 @@ export default function DatasetsPage() {
     };
 
     return (
-        <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 pt-16 sm:pt-20 lg:pt-8">
+        <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-start lg:justify-center p-8 pt-20 sm:pt-8">
             {/* Background System */}
             <CopernicanSystem />
 
             {/* Main Content Container */}
-            <div className="relative z-10 w-full max-w-6xl flex flex-col lg:grid lg:grid-cols-12 gap-6 sm:gap-8 items-start">
+            <div className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
                 {/* Header / Intro - Left Side */}
-                <div className="w-full lg:col-span-4 flex flex-col justify-center space-y-4 sm:space-y-6 lg:sticky lg:top-24">
+                <div className="lg:col-span-4 flex flex-col justify-center space-y-6 lg:sticky lg:top-24">
                     <h1 className="text-4xl sm:text-5xl lg:text-6xl text-white font-great-vibes leading-tight bg-gradient-to-r from-cyan-200 via-indigo-200 to-white bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]" style={{ fontFamily: 'var(--font-great-vibes)' }}>
-                        Systema<br />Cosmicum
+                        Systema <span className="hidden sm:inline"><br /></span>Cosmicum
                     </h1>
-                    <p className="text-sm sm:text-base lg:text-lg text-slate-300 font-light leading-relaxed backdrop-blur-sm bg-slate-900/30 p-3 sm:p-4 rounded-xl border border-white/5">
+                    <p className="text-lg text-slate-300 font-light leading-relaxed backdrop-blur-sm bg-slate-900/30 p-4 rounded-xl border border-white/5">
                         Select a dataset to begin the evaluation orbit. Each case revolves around a central premise, tested by the gravitational pull of agentic debate.
                     </p>
 
                     {/* Case Selector - Relocated */}
-                    {/* Case Selector - Relocated */}
+                    {/* Case Selector - With Auto-Scroll and Highlight */}
                     {selected && (
                         <div
                             ref={caseSelectorRef}
-                            className={`glass-card p-4 sm:p-6 backdrop-blur-xl rounded-xl space-y-3 animate-in fade-in slide-in-from-left-4 duration-700 transition-all ${highlightCaseSelector
+                            className={`glass-card p-6 backdrop-blur-xl rounded-xl space-y-3 animate-in fade-in slide-in-from-left-4 duration-700 transition-all ${highlightCaseSelector
                                 ? 'border-cyan-400/60 bg-cyan-500/10 shadow-[0_0_30px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/30'
                                 : 'border-primary/20 bg-background/30'
                                 }`}
@@ -226,7 +227,7 @@ export default function DatasetsPage() {
                                     <select
                                         value={selectedCaseId}
                                         onChange={(e) => setSelectedCaseId(e.target.value)}
-                                        className="w-full appearance-none bg-background/50 border border-primary/20 rounded-xl px-4 sm:px-5 py-3 sm:py-4 text-sm sm:text-base text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all min-h-[44px]"
+                                        className="w-full appearance-none bg-background/50 border border-primary/20 rounded-xl px-5 py-4 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
                                     >
                                         <option value="" className="bg-background">-- Select a specific case --</option>
                                         {cases.map((c) => (
@@ -243,25 +244,25 @@ export default function DatasetsPage() {
                 </div>
 
                 {/* Interactive Panel - Right Side */}
-                <div className="w-full lg:col-span-8 flex flex-col gap-4 sm:gap-6">
+                <div className="lg:col-span-8 flex flex-col gap-6">
 
                     {/* Dataset Selection - Horizontal Scroll or Grid */}
-                    <div className="glass-panel border-white/10 bg-slate-950/40 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl">
-                        <h2 className="text-xs font-semibold text-cyan-400 mb-3 sm:mb-4 tracking-widest uppercase">Available Datasets</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="glass-panel border-white/10 bg-slate-950/40 backdrop-blur-md rounded-3xl p-6 shadow-2xl">
+                        <h2 className="text-xs font-semibold text-cyan-400 mb-4 tracking-widest uppercase">Available Datasets</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {datasets.map((ds) => (
                                 <button
                                     key={ds.id}
                                     onClick={() => handleSelectDataset(ds.id)}
-                                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-5 text-left transition-all duration-300 border min-h-[44px] ${selected === ds.id
+                                    className={`group relative overflow-hidden rounded-2xl p-5 text-left transition-all duration-300 border ${selected === ds.id
                                         ? "bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/30"
                                         : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
                                         }`}
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 via-cyan-500/0 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <h3 className={`text-base sm:text-lg font-medium transition-colors ${selected === ds.id ? "text-cyan-200" : "text-white"}`}>{ds.id}</h3>
-                                    <p className="text-xs sm:text-sm text-slate-400 mt-2 line-clamp-2 leading-relaxed">{ds.description}</p>
-                                    <div className="flex items-center gap-2 mt-3 sm:mt-4 text-xs text-white/30">
+                                    <h3 className={`text-lg font-medium transition-colors ${selected === ds.id ? "text-cyan-200" : "text-white"}`}>{ds.id}</h3>
+                                    <p className="text-sm text-slate-400 mt-2 line-clamp-2 leading-relaxed">{ds.description}</p>
+                                    <div className="flex items-center gap-2 mt-4 text-xs text-white/30">
                                         <span className="px-2 py-1 rounded-full bg-white/5">{ds.case_count} orbits</span>
                                         <span>v{ds.version}</span>
                                     </div>
@@ -272,25 +273,25 @@ export default function DatasetsPage() {
 
                     {/* Model Configuration */}
                     {(selected && selectedCaseId) && (
-                        <div className="glass-panel border-white/10 bg-slate-950/60 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-5 sm:p-6 lg:p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <div className="glass-panel border-white/10 bg-slate-950/60 backdrop-blur-xl rounded-3xl p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
 
 
 
                             {/* Model Selector */}
                             {selected && selectedCaseId && (
                                 <div
-                                    className={`space-y-4 sm:space-y-6 p-4 sm:p-6 -m-4 sm:-m-6 rounded-2xl transition-all duration-500 ${highlightModelSelector
+                                    ref={modelSelectorRef}
+                                    className={`space-y-6 p-6 -m-6 rounded-2xl transition-all duration-500 ${highlightModelSelector
                                         ? 'bg-gradient-to-br from-cyan-500/10 via-indigo-500/10 to-cyan-500/5 shadow-[inset_0_0_40px_rgba(34,211,238,0.2)] border-2 border-cyan-400/40'
                                         : 'bg-transparent border-2 border-transparent'
                                         }`}
-                                    ref={modelSelectorRef}
                                 >
                                     <div className="flex items-center justify-between">
                                         <label className="text-xs font-semibold text-cyan-400 uppercase tracking-widest pl-1">Inference Engine</label>
                                         <button
                                             onClick={handleRefreshValidation}
                                             disabled={validationLoading}
-                                            className="text-xs text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1 min-h-[44px] sm:min-h-0"
+                                            className="text-xs text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1"
                                         >
                                             {validationLoading ? "Aligning..." : "Verify Connection"}
                                         </button>
@@ -317,7 +318,7 @@ export default function DatasetsPage() {
                                                 setSelectedModel(value);
                                                 setError("");
                                             }}
-                                            className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 sm:px-5 py-3 sm:py-4 text-sm sm:text-base text-white focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all min-h-[44px]"
+                                            className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
                                         >
                                             <option value="" className="bg-slate-950">-- Select Intelligence Model --</option>
                                             {AVAILABLE_MODELS.map((m) => {
@@ -348,10 +349,10 @@ export default function DatasetsPage() {
                                         <button
                                             onClick={handleLaunch}
                                             disabled={launching || !selectedModel}
-                                            className="group relative w-full h-12 sm:h-14 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 disabled:from-slate-800 disabled:to-slate-900 transition-all duration-300 shadow-lg hover:shadow-cyan-500/25"
+                                            className="group relative w-full h-14 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 disabled:from-slate-800 disabled:to-slate-900 transition-all duration-300 shadow-lg hover:shadow-cyan-500/25"
                                         >
                                             <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-out skew-x-12 -translate-x-[150%]" />
-                                            <span className="relative flex items-center justify-center gap-2 font-medium text-base sm:text-lg tracking-wide text-white">
+                                            <span className="relative flex items-center justify-center gap-2 font-medium text-lg tracking-wide text-white">
                                                 {launching ? (
                                                     <>Igniting Sequence...</>
                                                 ) : (
@@ -359,7 +360,7 @@ export default function DatasetsPage() {
                                                 )}
                                             </span>
                                         </button>
-                                        {error && <p className="text-center text-xs sm:text-sm text-red-400 bg-red-950/30 py-2 rounded-lg border border-red-500/20">{error}</p>}
+                                        {error && <p className="text-center text-sm text-red-400 bg-red-950/30 py-2 rounded-lg border border-red-500/20">{error}</p>}
                                     </div>
                                 </div>
                             )}
