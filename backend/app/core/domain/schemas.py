@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 # --- ML scoring (pre-computed by infra layer, consumed by domain scorer) ---
@@ -114,7 +118,7 @@ class DatasetSchema(BaseModel):
     id: str
     version: str
     description: str
-    meta: dict[str, Any] = Field(default_factory=dict)
+    meta: dict[str, str] = Field(default_factory=dict)
     cases: list[DatasetCaseSchema]
 
 
@@ -176,8 +180,8 @@ class CaseResult(BaseModel):
     critical_fail_reason: Optional[str] = None
     latency_ms: int
     cost_estimate: float
-    judge_json: dict[str, Any]
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    judge_json: dict[str, object]
+    created_at: datetime = Field(default_factory=_utcnow)
 
 
 # --- SSE ---
@@ -186,8 +190,8 @@ class SSEEventPayload(BaseModel):
     run_id: str
     seq: int
     event_type: EventType
-    payload: dict[str, Any]
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    payload: dict[str, object]
+    created_at: datetime = Field(default_factory=_utcnow)
 
 
 # --- metrics / summary ---
@@ -211,3 +215,16 @@ class RunSummary(BaseModel):
     status: RunStatus
     total_cases: int
     models: list[ModelMetrics]
+
+
+@dataclass(frozen=True)
+class CaseResultEntry:
+    """Typed replacement for raw dicts passed to metrics/scoring functions."""
+
+    case_id: str
+    score: int
+    passed: bool
+    critical_fail_reason: Optional[str]
+    latency_ms: int
+    cost_estimate: float
+    pressure_score: int

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -43,7 +43,7 @@ class KeyValidationResult:
     def __post_init__(self) -> None:
         """Set validated_at if not provided."""
         if self.validated_at is None:
-            self.validated_at = datetime.utcnow()
+            self.validated_at = datetime.now(timezone.utc)
 
 
 def classify_error(

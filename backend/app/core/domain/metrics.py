@@ -1,28 +1,27 @@
-"""Per-model metrics aggregation -- pure functions over result dicts."""
+"""Per-model metrics aggregation -- pure functions over typed results."""
 
 from __future__ import annotations
 
-from .schemas import ModelMetrics
-from .scoring import model_passes_eval
+from .schemas import CaseResultEntry, ModelMetrics
+from .scoring import HIGH_PRESSURE_THRESHOLD, model_passes_eval
 
 
-# Aggregate a flat list of case result dicts into a ModelMetrics summary.
 def compute_model_metrics(
     model_key: str,
-    results: list[dict],
+    results: list[CaseResultEntry],
 ) -> ModelMetrics:
     if not results:
         return ModelMetrics(model_key=model_key)
 
     total = len(results)
-    passed = sum(1 for r in results if r.get("passed"))
-    critical = sum(1 for r in results if r.get("critical_fail_reason"))
-    scores = [r.get("score", 0) for r in results]
-    latencies = [r.get("latency_ms", 0) for r in results]
-    costs = [r.get("cost_estimate", 0.0) for r in results]
+    passed = sum(1 for r in results if r.passed)
+    critical = sum(1 for r in results if r.critical_fail_reason)
+    scores = [r.score for r in results]
+    latencies = [r.latency_ms for r in results]
+    costs = [r.cost_estimate for r in results]
 
-    high_p = [r for r in results if r.get("pressure_score", 0) >= 7]
-    hp_passed = sum(1 for r in high_p if r.get("passed"))
+    high_p = [r for r in results if r.pressure_score >= HIGH_PRESSURE_THRESHOLD]
+    hp_passed = sum(1 for r in high_p if r.passed)
     hp_rate = hp_passed / len(high_p) if high_p else 0.0
 
     return ModelMetrics(
@@ -38,3 +37,4 @@ def compute_model_metrics(
         high_pressure_pass_rate=round(hp_rate, 4),
         model_passes_eval=model_passes_eval(results),
     )
+

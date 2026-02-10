@@ -20,7 +20,7 @@ formatter = ShortPathFormatter(
 configure_logging(formatter)
 
 root_logger = logging.getLogger()
-root_logger.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+root_logger.setLevel(settings.log_level_int)
 
 logger = logging.getLogger(__name__)
 

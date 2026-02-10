@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -94,7 +94,7 @@ class RunEvalUsecase:
             })
 
             await self._repo.update_run_status(
-                run_id, status=RunStatus.COMPLETED, finished_at=datetime.utcnow(),
+                run_id, status=RunStatus.COMPLETED, finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
             )
             await self._repo.commit()
 
@@ -117,7 +117,7 @@ class RunEvalUsecase:
         except Exception as exc:
             logger.exception("Run %s failed", run_id)
             await self._repo.update_run_status(
-                run_id, status=RunStatus.FAILED, finished_at=datetime.utcnow(),
+                run_id, status=RunStatus.FAILED, finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
             )
             await self._repo.commit()
             await self._emit(run_id, EventType.RUN_FINISHED, {
@@ -133,7 +133,7 @@ class RunEvalUsecase:
         await self._repo.upsert_case_status(
             run_id=run_id, case_id=case_row.case_id,
             model_key=model_key, status=CaseStatus.RUNNING,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )
         await self._repo.commit()
 
@@ -141,7 +141,7 @@ class RunEvalUsecase:
             llm = get_llm_client(
                 provider=model_cfg["provider"],
                 model_name=model_cfg["model_name"],
-                api_key_env=model_cfg.get("api_key_env"),
+                api_key_override=model_cfg.get("api_key_override"),
             )
 
             if settings.use_autogen_debate:
@@ -203,7 +203,7 @@ class RunEvalUsecase:
 
             # NOTE: label is only used at scoring time -- the debate controller
             # never sees it, preserving label isolation.
-            safe_flag = getattr(case_row, "safe_to_answer", True)
+            safe_flag: bool = getattr(case_row, "safe_to_answer", True)
 
             # --- ML scoring (optional, non-blocking) ---
             ml_scores = None
@@ -270,7 +270,7 @@ class RunEvalUsecase:
             await self._repo.upsert_case_status(
                 run_id=run_id, case_id=case_row.case_id,
                 model_key=model_key, status=CaseStatus.COMPLETED,
-                finished_at=datetime.utcnow(),
+                finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
             )
             await self._repo.commit()
 

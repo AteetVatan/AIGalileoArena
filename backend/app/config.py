@@ -1,5 +1,6 @@
 """App settings -- all config from env vars via pydantic-settings."""
 
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -122,9 +123,33 @@ class Settings(BaseSettings):
         description="Enable evidence retrieval tools for AutoGen debate agents",
     )
 
+    _LOG_LEVEL_MAP: dict[str, int] = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL,
+    }
+
+    @property
+    def log_level_int(self) -> int:
+        return self._LOG_LEVEL_MAP.get(self.log_level.upper(), logging.INFO)
+
     @property
     def debug_mode(self) -> bool:
         return self.log_level.upper() == "DEBUG"
+
+    def get_api_key(self, provider: str) -> str | None:
+        """Explicit provider → key mapping. No getattr."""
+        key_map: dict[str, str | None] = {
+            "openai": self.openai_api_key,
+            "anthropic": self.anthropic_api_key,
+            "mistral": self.mistral_api_key,
+            "deepseek": self.deepseek_api_key,
+            "gemini": self.gemini_api_key,
+            "grok": self.grok_api_key,
+        }
+        return key_map.get(provider.lower())
 
 
 settings = Settings()

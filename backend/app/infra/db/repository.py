@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import and_, delete, desc, select
@@ -358,7 +358,7 @@ class Repository:
         case_id: str,
     ) -> Optional[CachedResultSetRow]:
         """Next non-expired slot, round-robin by last_served_at."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         stmt = (
             select(CachedResultSetRow)
             .where(and_(
@@ -380,7 +380,7 @@ class Repository:
         stmt = select(CachedResultSetRow).where(CachedResultSetRow.id == slot_id)
         result = await self._s.execute(stmt)
         row = result.scalar_one()
-        row.last_served_at = datetime.utcnow()
+        row.last_served_at = datetime.now(timezone.utc).replace(tzinfo=None)
         await self._s.flush()
 
     async def get_next_empty_slot_number(
@@ -392,7 +392,7 @@ class Repository:
         max_slots: int,
     ) -> Optional[int]:
         """First slot in 1..max_slots not occupied by a live (non-expired) row."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         stmt = (
             select(CachedResultSetRow.slot_number)
             .where(and_(
@@ -446,7 +446,7 @@ class Repository:
         return result.rowcount  # type: ignore[return-value]
 
     async def delete_expired_slots(self) -> int:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         stmt = delete(CachedResultSetRow).where(CachedResultSetRow.expires_at <= now)
         result = await self._s.execute(stmt)
         await self._s.flush()

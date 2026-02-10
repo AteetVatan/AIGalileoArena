@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime
 from typing import Optional
@@ -72,30 +73,18 @@ async def get_available_keys(
     """
     available = set()
 
-    # Map of env var names to settings attributes
-    key_map = {
-        "OPENAI_API_KEY": "openai_api_key",
-        "ANTHROPIC_API_KEY": "anthropic_api_key",
-        "MISTRAL_API_KEY": "mistral_api_key",
-        "DEEPSEEK_API_KEY": "deepseek_api_key",
-        "GEMINI_API_KEY": "gemini_api_key",
-        "GROK_API_KEY": "grok_api_key",
-    }
+    _PROVIDER_NAMES = ("openai", "anthropic", "mistral", "deepseek", "gemini", "grok")
+    _MIN_KEY_LENGTH = 10
+    _INVALID_VALUES = frozenset(("no", "false", "none", "", "n/a", "na", "not set", "unset"))
 
-    for env_name, attr_name in key_map.items():
-        key_value = getattr(settings, attr_name, None)
-        # Check if key is actually set and not empty/None/"No"
-        if key_value and isinstance(key_value, str):
-            key_value = key_value.strip().lower()
-            # Exclude empty strings, "No", "no", "false", "False", "none", etc.
-            # Also check if it looks like a real API key (starts with common prefixes)
-            invalid_values = ("no", "false", "none", "", "n/a", "na", "not set", "unset")
-            is_valid = (
-                key_value not in invalid_values
-                and len(key_value) > 10  # Real API keys are usually longer
-            )
-            if is_valid:
-                available.add(env_name)
+    for provider in _PROVIDER_NAMES:
+        env_name = f"{provider.upper()}_API_KEY"
+        key_value = settings.get_api_key(provider)
+        if not key_value or not isinstance(key_value, str):
+            continue
+        stripped = key_value.strip().lower()
+        if stripped not in _INVALID_VALUES and len(stripped) > _MIN_KEY_LENGTH:
+            available.add(env_name)
 
     response = {"available_keys": list(available)}
 
@@ -115,12 +104,8 @@ async def get_available_keys(
             # Re-raise rate limit exceptions
             raise
         except Exception as exc:
-            # Log error but don't fail the request
-            # Return empty validation dict on error
-            import logging
-
             logger = logging.getLogger(__name__)
-            logger.error(f"Error during key validation: {exc}", exc_info=True)
+            logger.error("Error during key validation: %s", exc, exc_info=True)
             response["validation"] = {}
             response["validation_error"] = "Failed to validate keys. Please try again."
 

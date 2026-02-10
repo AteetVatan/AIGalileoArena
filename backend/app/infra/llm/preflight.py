@@ -98,7 +98,7 @@ async def preflight_openai(api_key: str) -> KeyValidationResult:
         )
     except Exception as exc:
         # Catch-all for unexpected errors
-        logger.warning(f"Unexpected error in OpenAI preflight: {exc}", exc_info=True)
+        logger.warning("Unexpected error in OpenAI preflight: %s", exc, exc_info=True)
         return KeyValidationResult(
             status=classify_error(None, str(exc)),
             provider=provider,
@@ -156,7 +156,7 @@ async def preflight_anthropic(api_key: str) -> KeyValidationResult:
             http_status=status,
         )
     except Exception as exc:
-        logger.warning(f"Unexpected error in Anthropic preflight: {exc}", exc_info=True)
+        logger.warning("Unexpected error in Anthropic preflight: %s", exc, exc_info=True)
         return KeyValidationResult(
             status=classify_error(None, str(exc)),
             provider=provider,
@@ -223,7 +223,7 @@ async def preflight_gemini(api_key: str) -> KeyValidationResult:
         # Gemini errors vary - check common attributes
         status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
         message = str(exc)
-        logger.warning(f"Error in Gemini preflight: {exc}", exc_info=True)
+        logger.warning("Error in Gemini preflight: %s", exc, exc_info=True)
         return KeyValidationResult(
             status=classify_error(status, message),
             provider=provider,
@@ -286,7 +286,7 @@ async def preflight_mistral(api_key: str) -> KeyValidationResult:
         # Mistral errors similar to OpenAI
         status = getattr(exc, "status_code", None)
         message = getattr(exc, "message", str(exc))
-        logger.warning(f"Error in Mistral preflight: {exc}", exc_info=True)
+        logger.warning("Error in Mistral preflight: %s", exc, exc_info=True)
         return KeyValidationResult(
             status=classify_error(status, message),
             provider=provider,
@@ -368,7 +368,7 @@ async def preflight_deepseek(api_key: str) -> KeyValidationResult:
             http_status=status,
         )
     except Exception as exc:
-        logger.warning(f"Unexpected error in DeepSeek preflight: {exc}", exc_info=True)
+        logger.warning("Unexpected error in DeepSeek preflight: %s", exc, exc_info=True)
         return KeyValidationResult(
             status=classify_error(None, str(exc)),
             provider=provider,
@@ -449,7 +449,7 @@ async def preflight_grok(api_key: str) -> KeyValidationResult:
             http_status=status,
         )
     except Exception as exc:
-        logger.warning(f"Unexpected error in Grok preflight: {exc}", exc_info=True)
+        logger.warning("Unexpected error in Grok preflight: %s", exc, exc_info=True)
         return KeyValidationResult(
             status=classify_error(None, str(exc)),
             provider=provider,

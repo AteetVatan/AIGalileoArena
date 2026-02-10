@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Literal
+from typing import Callable, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -83,7 +83,7 @@ class Answer(BaseModel):
     
     @model_validator(mode="before")
     @classmethod
-    def ensure_admission(cls, data: Any) -> Any:
+    def ensure_admission(cls, data: dict) -> dict:  # type: ignore[type-arg]
         """Ensure admission is never None or missing."""
         if isinstance(data, dict):
             if "admission" not in data or data.get("admission") is None:
@@ -124,7 +124,7 @@ class DisputeAnswer(BaseModel):
     
     @model_validator(mode="before")
     @classmethod
-    def ensure_admission(cls, data: Any) -> Any:
+    def ensure_admission(cls, data: dict) -> dict:  # type: ignore[type-arg]
         """Ensure admission is never None or missing."""
         if isinstance(data, dict):
             if "admission" not in data or data.get("admission") is None:
@@ -185,10 +185,10 @@ class DebateMessage:
 @dataclass
 class DebateResult:
     messages: list[DebateMessage] = field(default_factory=list)
-    judge_json: dict[str, Any] = field(default_factory=dict)
+    judge_json: dict[str, str | float | list[str]] = field(default_factory=dict)
     total_latency_ms: int = 0
     total_cost: float = 0.0
 
 
-OnMessageCallback = Callable[[MessageEvent], Any]
-OnPhaseCallback = Callable[[PhaseEvent], Any]
+OnMessageCallback = Callable[[MessageEvent], None]
+OnPhaseCallback = Callable[[PhaseEvent], None]

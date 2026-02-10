@@ -1,6 +1,11 @@
 /* Available models (6 providers) and API config. */
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+export const API_BASE = "/api";
+
+// SSE must bypass the Next.js rewrite proxy (which buffers the response body).
+// EventSource connects directly to the backend for real-time streaming.
+export const SSE_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface AvailableModel {
   id: string;

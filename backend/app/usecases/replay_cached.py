@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,7 +85,7 @@ class ReplayCachedUsecase:
 
         # 7. Mark completed
         await self._repo.update_run_status(
-            self._run_id, status=RunStatus.COMPLETED, finished_at=datetime.utcnow(),
+            self._run_id, status=RunStatus.COMPLETED, finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )
         await self._repo.commit()
 
@@ -108,7 +108,7 @@ class ReplayCachedUsecase:
                 await self._repo.upsert_case_status(
                     run_id=self._run_id, case_id=case_id,
                     model_key=model_key, status=CaseStatus.RUNNING,
-                    started_at=datetime.utcnow(),
+                    started_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 )
                 await self._repo.commit()
             await self._emit(etype, payload)
@@ -150,7 +150,7 @@ class ReplayCachedUsecase:
                 await self._repo.upsert_case_status(
                     run_id=self._run_id, case_id=src_result.case_id,
                     model_key=src_result.model_key, status=CaseStatus.COMPLETED,
-                    finished_at=datetime.utcnow(),
+                    finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 )
                 await self._repo.commit()
             else:
@@ -170,7 +170,7 @@ class ReplayCachedUsecase:
         logger.error("Replay FAILED: run_id=%s reason=%s", self._run_id, reason)
         try:
             await self._repo.update_run_status(
-                self._run_id, status=RunStatus.FAILED, finished_at=datetime.utcnow(),
+                self._run_id, status=RunStatus.FAILED, finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
             )
             await self._repo.commit()
             await self._emit(EventType.RUN_FINISHED, {"run_id": self._run_id, "error": reason})

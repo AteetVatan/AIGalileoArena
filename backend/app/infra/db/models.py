@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+
+def _utcnow() -> datetime:
+    """Naive UTC timestamp compatible with TIMESTAMP WITHOUT TIME ZONE columns."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 from sqlalchemy import (
     Boolean,
@@ -35,7 +40,7 @@ class DatasetRow(Base):
     version: Mapped[str] = mapped_column(String(32), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     meta_json: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     cases: Mapped[list["DatasetCaseRow"]] = relationship(
         back_populates="dataset", cascade="all, delete-orphan"
@@ -56,7 +61,7 @@ class DatasetCaseRow(Base):
     label: Mapped[str] = mapped_column(String(32), nullable=False)
     evidence_json: Mapped[list] = mapped_column(JSON, nullable=False)
     safe_to_answer: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     dataset: Mapped["DatasetRow"] = relationship(back_populates="cases")
 
@@ -80,7 +85,7 @@ class RunRow(Base):
     scoring_mode: Mapped[str] = mapped_column(
         String(32), default=ScoringMode.DETERMINISTIC.value, server_default=ScoringMode.DETERMINISTIC.value
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     case_statuses: Mapped[list["RunCaseStatusRow"]] = relationship(
@@ -132,7 +137,7 @@ class RunMessageRow(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     phase: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     round: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     run: Mapped["RunRow"] = relationship(back_populates="messages")
 
@@ -162,7 +167,7 @@ class RunResultRow(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     cost_estimate: Mapped[float] = mapped_column(Float, default=0.0)
     judge_json: Mapped[dict] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     run: Mapped["RunRow"] = relationship(back_populates="results")
 
@@ -183,7 +188,7 @@ class RunEventRow(Base):
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     payload_json: Mapped[dict] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     run: Mapped["RunRow"] = relationship(back_populates="events")
 
@@ -198,7 +203,7 @@ CACHE_SLOT_TTL = timedelta(hours=24)
 
 
 def _default_expires_at() -> datetime:
-    return datetime.utcnow() + CACHE_SLOT_TTL
+    return _utcnow() + CACHE_SLOT_TTL
 
 
 class CachedResultSetRow(Base):
@@ -214,7 +219,7 @@ class CachedResultSetRow(Base):
     source_run_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("runs.run_id"), nullable=False
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, default=_default_expires_at)
     last_served_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 

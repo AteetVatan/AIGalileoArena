@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 if TYPE_CHECKING:
@@ -32,13 +32,16 @@ class EventBus:
             "seq": seq,
             "event_type": event_type,
             "payload": payload,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         for queue in self._subscribers.get(run_id, []):
             try:
                 queue.put_nowait(event)
             except asyncio.QueueFull:
                 logger.warning("SSE queue full for run %s, dropping event", run_id)
+        # Yield control so the SSE StreamingResponse can flush this event
+        # before the next one is queued (prevents burst delivery).
+        await asyncio.sleep(0)
         return seq
 
     def subscribe(self, run_id: str) -> asyncio.Queue:

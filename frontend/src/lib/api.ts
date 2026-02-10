@@ -1,6 +1,6 @@
 /* Typed API client for the FastAPI backend. */
 
-import { API_BASE } from "./constants";
+import { API_BASE, SSE_BASE } from "./constants";
 import type {
   Dataset,
   DatasetDetail,
@@ -106,6 +106,6 @@ export const api = {
   },
 
   eventsUrl(runId: string): string {
-    return `${API_BASE}/runs/${runId}/events`;
+    return `${SSE_BASE}/runs/${runId}/events`;
   },
 };

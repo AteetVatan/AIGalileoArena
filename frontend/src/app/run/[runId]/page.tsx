@@ -31,10 +31,9 @@ export default function RunDashboard() {
   const [historicalMessagesLoaded, setHistoricalMessagesLoaded] = useState(false);
 
   const handleEvent = useCallback((event: SSEEvent) => {
-    const p = event.payload;
-
-    switch (p.event_type) {
-      case "agent_message":
+    switch (event.event_type) {
+      case "agent_message": {
+        const p = event.payload as import("@/lib/eventTypes").AgentMessagePayload;
         setMessages((prev) => [
           ...prev,
           {
@@ -46,7 +45,9 @@ export default function RunDashboard() {
           },
         ]);
         break;
-      case "case_scored":
+      }
+      case "case_scored": {
+        const p = event.payload as import("@/lib/eventTypes").CaseScoredPayload;
         setScores((prev) => [
           ...prev,
           {
@@ -62,9 +63,12 @@ export default function RunDashboard() {
           },
         ]);
         break;
-      case "metrics_update":
+      }
+      case "metrics_update": {
+        const p = event.payload as import("@/lib/eventTypes").MetricsUpdatePayload;
         setProgress({ completed: p.completed, total: p.total });
         break;
+      }
     }
   }, []);
 
@@ -79,9 +83,10 @@ export default function RunDashboard() {
   }, [runId]);
   // ... (skipping lines 81-283 for brevity in this instruction, but tool handles chunks)
 
-  // Poll for messages while running (fallback for blocked SSE)
+  // Poll for messages only when SSE is not connected (fallback)
   useEffect(() => {
     if (!runId || run?.status === "COMPLETED" || run?.status === "FAILED") return;
+    if (sseStatus === "OPEN") return;
 
     const interval = setInterval(async () => {
       try {
@@ -99,10 +104,10 @@ export default function RunDashboard() {
       } catch (e) {
         console.error("Polling error", e);
       }
-    }, 1000);
+    }, 3000);
 
     return () => clearInterval(interval);
-  }, [runId, run?.status]);
+  }, [runId, run?.status, sseStatus]);
 
   // Load historical messages for completed runs
   useEffect(() => {

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from app.config import settings
 
@@ -30,39 +30,25 @@ logger = logging.getLogger(__name__)
 CACHE_TTL_SECONDS = 7200  # 2 hours
 
 # In-memory cache: key -> (result, timestamp)
-_validation_cache: Dict[str, tuple[KeyValidationResult, datetime]] = {}
+_validation_cache: dict[str, tuple[KeyValidationResult, datetime]] = {}
 
 
-def _get_available_keys() -> Dict[str, str]:
-    """Get all configured API keys.
+_PROVIDER_NAMES = ("openai", "anthropic", "mistral", "deepseek", "gemini", "grok")
+_MIN_KEY_LENGTH = 10
+_INVALID_VALUES = frozenset(("no", "false", "none", "", "n/a", "na", "not set", "unset"))
 
-    Returns:
-        Dict mapping api_key_env -> api_key value
-    """
-    key_map = {
-        "OPENAI_API_KEY": "openai_api_key",
-        "ANTHROPIC_API_KEY": "anthropic_api_key",
-        "MISTRAL_API_KEY": "mistral_api_key",
-        "DEEPSEEK_API_KEY": "deepseek_api_key",
-        "GEMINI_API_KEY": "gemini_api_key",
-        "GROK_API_KEY": "grok_api_key",
-    }
 
-    available = {}
-    for env_name, attr_name in key_map.items():
-        key_value = getattr(settings, attr_name, None)
-        # Check if key is actually set and not empty/None/"No"
-        if key_value and isinstance(key_value, str):
-            key_value_stripped = key_value.strip().lower()
-            # Exclude empty strings, "No", "no", "false", "False", "none", etc.
-            invalid_values = ("no", "false", "none", "", "n/a", "na", "not set", "unset")
-            is_valid = (
-                key_value_stripped not in invalid_values
-                and len(key_value_stripped) > 10  # Real API keys are usually longer
-            )
-            if is_valid:
-                available[env_name] = key_value  # Store original (not lowercased)
-
+def _get_available_keys() -> dict[str, str]:
+    """Get all configured API keys via settings.get_api_key()."""
+    available: dict[str, str] = {}
+    for provider in _PROVIDER_NAMES:
+        env_name = f"{provider.upper()}_API_KEY"
+        key_value = settings.get_api_key(provider)
+        if not key_value or not isinstance(key_value, str):
+            continue
+        stripped = key_value.strip().lower()
+        if stripped not in _INVALID_VALUES and len(stripped) > _MIN_KEY_LENGTH:
+            available[env_name] = key_value
     return available
 
 
@@ -82,27 +68,26 @@ def _get_cached_result(api_key_env: str) -> Optional[KeyValidationResult]:
         return None
 
     result, cached_at = _validation_cache[cache_key]
-    age = (datetime.utcnow() - cached_at).total_seconds()
+    age = (datetime.now(timezone.utc) - cached_at).total_seconds()
 
     if age < CACHE_TTL_SECONDS:
-        logger.debug(f"Cache hit for {api_key_env} (age: {age:.1f}s)")
+        logger.debug("Cache hit for %s (age: %.1fs)", api_key_env, age)
         return result
     else:
-        # Expired, remove from cache
         del _validation_cache[cache_key]
-        logger.debug(f"Cache expired for {api_key_env} (age: {age:.1f}s)")
+        logger.debug("Cache expired for %s (age: %.1fs)", api_key_env, age)
         return None
 
 
 def _set_cached_result(api_key_env: str, result: KeyValidationResult) -> None:
     """Store validation result in cache."""
     cache_key = _get_cache_key(api_key_env)
-    _validation_cache[cache_key] = (result, datetime.utcnow())
-    logger.debug(f"Cached validation result for {api_key_env}: {result.status}")
+    _validation_cache[cache_key] = (result, datetime.now(timezone.utc))
+    logger.debug("Cached validation result for %s: %s", api_key_env, result.status)
 
 
 async def _validate_single_key(
-    api_key_env: str, api_key: str, force: bool = False
+    api_key_env: str, api_key: str, *, force: bool = False
 ) -> KeyValidationResult:
     """Validate a single API key.
 
@@ -132,7 +117,7 @@ async def _validate_single_key(
 
     preflight_func = preflight_functions.get(api_key_env)
     if preflight_func is None:
-        logger.warning(f"No preflight function for {api_key_env}")
+        logger.warning("No preflight function for %s", api_key_env)
         return KeyValidationResult(
             status=KeyValidationStatus.UNKNOWN_ERROR,
             provider="unknown",
@@ -148,7 +133,7 @@ async def _validate_single_key(
         return result
     except Exception as exc:
         # Unexpected error in preflight wrapper
-        logger.error(f"Unexpected error validating {api_key_env}: {exc}", exc_info=True)
+        logger.error("Unexpected error validating %s: %s", api_key_env, exc, exc_info=True)
         result = KeyValidationResult(
             status=KeyValidationStatus.UNKNOWN_ERROR,
             provider="unknown",
@@ -160,7 +145,7 @@ async def _validate_single_key(
         return result
 
 
-async def validate_all_keys(force: bool = False) -> Dict[str, KeyValidationResult]:
+async def validate_all_keys(*, force: bool = False) -> dict[str, KeyValidationResult]:
     """Validate all configured API keys in parallel.
 
     Args:
@@ -183,7 +168,7 @@ async def validate_all_keys(force: bool = False) -> Dict[str, KeyValidationResul
         tasks.append(_validate_single_key(api_key_env, api_key, force=force))
 
     # Run all validations in parallel
-    logger.info(f"Validating {len(tasks)} API keys in parallel (force={force})")
+    logger.info("Validating %d API keys in parallel (force=%s)", len(tasks), force)
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # Process results: convert exceptions to KeyValidationResult
@@ -191,7 +176,8 @@ async def validate_all_keys(force: bool = False) -> Dict[str, KeyValidationResul
     for api_key_env, result in zip(key_envs, results):
         if isinstance(result, Exception):
             logger.error(
-                f"Exception during validation of {api_key_env}: {result}",
+                "Exception during validation of %s: %s",
+                api_key_env, result,
                 exc_info=result,
             )
             validation_results[api_key_env] = KeyValidationResult(
@@ -203,7 +189,8 @@ async def validate_all_keys(force: bool = False) -> Dict[str, KeyValidationResul
         else:
             validation_results[api_key_env] = result
 
+    valid_count = sum(1 for r in validation_results.values() if r.status == KeyValidationStatus.VALID)
     logger.info(
-        f"Validation complete: {sum(1 for r in validation_results.values() if r.status == KeyValidationStatus.VALID)}/{len(validation_results)} valid"
+        "Validation complete: %d/%d valid", valid_count, len(validation_results),
     )
     return validation_results

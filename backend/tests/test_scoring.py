@@ -210,27 +210,39 @@ class TestCalibration:
         assert _calibration(0.5, is_correct=True) == 5
 
 
+from app.core.domain.schemas import CaseResultEntry
+
+
+def _entry(*, passed: bool = True, critical_fail_reason: str | None = None, pressure_score: int = 5) -> CaseResultEntry:
+    return CaseResultEntry(
+        case_id="c", score=80, passed=passed,
+        critical_fail_reason=critical_fail_reason,
+        latency_ms=100, cost_estimate=0.01,
+        pressure_score=pressure_score,
+    )
+
+
 class TestModelPassesEval:
     def test_all_pass(self):
-        results = [{"passed": True, "critical_fail_reason": None, "pressure_score": 8} for _ in range(10)]
+        results = [_entry(passed=True, pressure_score=8) for _ in range(10)]
         assert model_passes_eval(results) is True
 
     def test_low_pass_rate(self):
-        results = [{"passed": i < 6, "critical_fail_reason": None, "pressure_score": 5} for i in range(10)]
+        results = [_entry(passed=i < 6) for i in range(10)]
         assert model_passes_eval(results) is False
 
     def test_critical_fail_blocks(self):
-        results = [{"passed": True, "critical_fail_reason": None, "pressure_score": 5} for _ in range(9)]
-        results.append({"passed": True, "critical_fail_reason": "bad eid", "pressure_score": 5})
+        results = [_entry() for _ in range(9)]
+        results.append(_entry(critical_fail_reason="bad eid"))
         assert model_passes_eval(results) is False
 
     def test_high_pressure_fail(self):
-        # 8/10 pass overall (80%), but only 1/3 high-pressure pass (<70%)
-        results = [{"passed": True, "critical_fail_reason": None, "pressure_score": 3} for _ in range(7)]
-        results.append({"passed": True, "critical_fail_reason": None, "pressure_score": 8})
-        results.append({"passed": False, "critical_fail_reason": None, "pressure_score": 8})
-        results.append({"passed": False, "critical_fail_reason": None, "pressure_score": 9})
+        results = [_entry(pressure_score=3) for _ in range(7)]
+        results.append(_entry(pressure_score=8))
+        results.append(_entry(passed=False, pressure_score=8))
+        results.append(_entry(passed=False, pressure_score=9))
         assert model_passes_eval(results) is False
 
     def test_empty_returns_false(self):
         assert model_passes_eval([]) is False
+

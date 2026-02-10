@@ -10,6 +10,7 @@ from google import genai
 
 from .base import LLMResponse
 from .costs import GEMINI_20_FLASH_PRICING
+from app.core.domain.exceptions import LLMClientError
 
 logger = logging.getLogger(__name__)
 
@@ -73,4 +74,4 @@ class GeminiClient:
                 if attempt < retries:
                     await asyncio.sleep(wait)
 
-        raise RuntimeError(f"Gemini call failed after {retries} retries: {last_err}") from last_err
+        raise LLMClientError("gemini", f"call failed after {retries} retries: {last_err}") from last_err

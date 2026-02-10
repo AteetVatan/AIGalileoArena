@@ -12,6 +12,7 @@ from openai import AsyncOpenAI, APIError, RateLimitError
 
 from .base import LLMResponse
 from .costs import DEFAULT_PRICING
+from app.core.domain.exceptions import LLMClientError
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class OpenAICompatibleClient:
                     attempt, retries, exc, wait,
                 )
                 await asyncio.sleep(wait)
-        raise RuntimeError(f"LLM call failed after {retries} retries: {last_err}") from last_err
+        raise LLMClientError("openai", f"call failed after {retries} retries: {last_err}") from last_err
 
     async def _call(
         self, prompt: str, *,

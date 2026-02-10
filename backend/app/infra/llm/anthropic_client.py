@@ -10,6 +10,7 @@ import anthropic
 
 from .base import LLMResponse
 from .costs import ANTHROPIC_CLAUDE_35_SONNET_PRICING
+from app.core.domain.exceptions import LLMClientError
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class AnthropicClient:
                 if attempt < retries:
                     await asyncio.sleep(wait)
 
-        raise RuntimeError(f"Anthropic call failed after {retries} retries: {last_err}") from last_err
+        raise LLMClientError("anthropic", f"call failed after {retries} retries: {last_err}") from last_err
 
     def _estimate_cost(self, input_tokens: int, output_tokens: int) -> float:
         inp = (input_tokens / 1_000_000) * self.PRICING[0]

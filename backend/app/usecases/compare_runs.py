@@ -88,8 +88,8 @@ async def compare_runs(
     # Check scoring mode mismatch for auditability
     run_a = await repo.get_run(run_a_id)
     run_b = await repo.get_run(run_b_id)
-    mode_a = getattr(run_a, "scoring_mode", ScoringMode.DETERMINISTIC.value) if run_a else ScoringMode.DETERMINISTIC.value
-    mode_b = getattr(run_b, "scoring_mode", ScoringMode.DETERMINISTIC.value) if run_b else ScoringMode.DETERMINISTIC.value
+    mode_a = run_a.scoring_mode if run_a else ScoringMode.DETERMINISTIC.value
+    mode_b = run_b.scoring_mode if run_b else ScoringMode.DETERMINISTIC.value
     mode_mismatch = mode_a != mode_b
 
     results_a = await repo.get_run_results(run_a_id, model_key=model_key)
