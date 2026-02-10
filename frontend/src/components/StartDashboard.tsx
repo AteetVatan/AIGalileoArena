@@ -6,6 +6,8 @@ import {
     useScoreBreakdown, useRadar,
 } from "@/lib/galileoQueries";
 import type { GalileoQueryParams } from "@/lib/galileoApi";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { NeonSpinner } from "@/components/ui/NeonSpinner";
 
 const TrendChart = lazy(() => import("@/components/analytics/TrendChart"));
 const DistributionChart = lazy(() => import("@/components/analytics/DistributionChart"));
@@ -13,37 +15,6 @@ const ScoreBreakdownChart = lazy(() => import("@/components/analytics/ScoreBreak
 const RadarChart = lazy(() => import("@/components/analytics/RadarChart"));
 
 const PARAMS: GalileoQueryParams = { window: 30, includeScheduled: true };
-
-function Spinner() {
-    return (
-        <div className="flex items-center justify-center h-48">
-            <div className="relative w-8 h-8">
-                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin" />
-                <div className="absolute inset-1 rounded-full border-2 border-transparent border-b-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.6s" }} />
-            </div>
-        </div>
-    );
-}
-
-interface MiniCardProps {
-    title: string;
-    children: React.ReactNode;
-}
-
-function MiniCard({ title, children }: MiniCardProps) {
-    return (
-        <div className="relative group rounded-2xl p-px overflow-hidden">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-transparent to-purple-500/20 opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative bg-slate-900/70 backdrop-blur-xl rounded-2xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                <h3 className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-[0.15em] mb-3 flex items-center gap-1.5">
-                    <span className="w-1 h-1 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.6)]" />
-                    {title}
-                </h3>
-                {children}
-            </div>
-        </div>
-    );
-}
 
 export default function StartDashboard() {
     const { data: summaryData } = useModelsSummary(PARAMS);
@@ -63,46 +34,46 @@ export default function StartDashboard() {
     }, [summaryData]);
 
     return (
-        <div className="grid grid-cols-2 gap-3">
-            <MiniCard title="Score Trend">
-                <Suspense fallback={<Spinner />}>
+        <div className="grid grid-cols-2 grid-rows-2 gap-3 h-full">
+            <GlassCard title="Score Trend" size="sm">
+                <Suspense fallback={<NeonSpinner />}>
                     {trendData?.series?.length ? (
                         <TrendChart series={trendData.series} modelNames={modelNames} />
                     ) : (
-                        <Spinner />
+                        <NeonSpinner />
                     )}
                 </Suspense>
-            </MiniCard>
+            </GlassCard>
 
-            <MiniCard title="Distribution">
-                <Suspense fallback={<Spinner />}>
+            <GlassCard title="Distribution" size="sm">
+                <Suspense fallback={<NeonSpinner />}>
                     {distData?.items?.length ? (
                         <DistributionChart items={distData.items} modelNames={modelNames} />
                     ) : (
-                        <Spinner />
+                        <NeonSpinner />
                     )}
                 </Suspense>
-            </MiniCard>
+            </GlassCard>
 
-            <MiniCard title="Breakdown">
-                <Suspense fallback={<Spinner />}>
+            <GlassCard title="Breakdown" size="sm">
+                <Suspense fallback={<NeonSpinner />}>
                     {breakdownData?.items?.length ? (
                         <ScoreBreakdownChart items={breakdownData.items} modelNames={modelNames} />
                     ) : (
-                        <Spinner />
+                        <NeonSpinner />
                     )}
                 </Suspense>
-            </MiniCard>
+            </GlassCard>
 
-            <MiniCard title="Radar">
-                <Suspense fallback={<Spinner />}>
+            <GlassCard title="Radar" size="sm">
+                <Suspense fallback={<NeonSpinner />}>
                     {radarData?.entries?.length ? (
                         <RadarChart entries={radarData.entries} modelNames={modelNames} />
                     ) : (
-                        <Spinner />
+                        <NeonSpinner />
                     )}
                 </Suspense>
-            </MiniCard>
+            </GlassCard>
         </div>
     );
 }

@@ -57,7 +57,7 @@ export default function RadarChart({ entries, modelNames }: RadarChartProps) {
     }
 
     return (
-        <ResponsiveContainer width="100%" height={360}>
+        <ResponsiveContainer width="100%" height="100%">
             <RechartsRadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
                 <PolarGrid stroke="#1e293b" strokeDasharray="3 3" />
                 <PolarAngleAxis

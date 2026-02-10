@@ -12,6 +12,7 @@ import { useRunDetails } from "@/lib/queries";
 import { api } from "@/lib/api";
 import type { SSEEvent } from "@/lib/eventTypes";
 import { Leaderboard } from "@/components/Leaderboard";
+import { GlassCard } from "@/components/ui/GlassCard";
 import { LiveTranscript } from "@/components/LiveTranscript";
 import { PressureScatter } from "@/components/PressureScatter";
 import { ConfusionMatrix } from "@/components/ConfusionMatrix";
@@ -215,8 +216,7 @@ export default function RunDashboard() {
 
         {/* Header Section */}
         <div className="mb-8 mt-12 w-full max-w-7xl mx-auto">
-          <div className="glass-card p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+          <GlassCard size="lg">
 
             {/* Title Area */}
             <div className="flex items-start gap-4 z-10">
@@ -284,7 +284,7 @@ export default function RunDashboard() {
                 )}
               </div>
             </div>
-          </div>
+          </GlassCard>
         </div>
 
         {/* Debug Info */}

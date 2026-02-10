@@ -46,7 +46,7 @@ export default function TrendChart({ series, modelNames }: TrendChartProps) {
     }
 
     return (
-        <ResponsiveContainer width="100%" height={320}>
+        <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                 <defs>
                     {series.map((s, i) => (

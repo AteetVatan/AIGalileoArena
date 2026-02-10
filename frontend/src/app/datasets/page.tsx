@@ -12,6 +12,7 @@ import type {
     KeyValidationStatus
 } from "@/lib/types";
 import { useDatasets, useDataset } from "@/lib/queries";
+import { GlassCard } from "@/components/ui/GlassCard";
 import { useKeyValidation } from "@/hooks/useKeyValidation";
 
 export default function DatasetsPage() {
@@ -133,33 +134,35 @@ export default function DatasetsPage() {
                     {/* Case Selector - Relocated */}
                     {/* Case Selector - With Auto-Scroll and Highlight */}
                     {selected && (
-                        <div
-                            ref={caseSelectorRef}
-                            className={`glass-card p-6 backdrop-blur-xl rounded-xl space-y-3 animate-in fade-in slide-in-from-left-4 duration-700 transition-all ${highlightCaseSelector
-                                ? 'border-cyan-400/60 bg-cyan-500/10 shadow-[0_0_30px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/30'
-                                : 'border-primary/20 bg-background/30'
-                                }`}
-                        >
-                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pl-1">Target Case</label>
-                            {casesLoading ? (
-                                <div className="h-12 w-full rounded-xl bg-muted/20 animate-pulse" />
-                            ) : (
-                                <div className="relative">
-                                    <select
-                                        value={selectedCaseId}
-                                        onChange={(e) => setSelectedCaseId(e.target.value)}
-                                        className="w-full appearance-none bg-background/50 border border-primary/20 rounded-xl px-5 py-4 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
-                                    >
-                                        <option value="" className="bg-background">-- Select a specific case --</option>
-                                        {cases.map((c: DatasetCase) => (
-                                            <option key={c.case_id} value={c.case_id} className="bg-background">
-                                                {c.topic}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">▼</div>
-                                </div>
-                            )}
+                        <div ref={caseSelectorRef}>
+                            <GlassCard
+                                size="lg"
+                                className={`space-y-3 animate-in fade-in slide-in-from-left-4 duration-700 transition-all ${highlightCaseSelector
+                                    ? 'border-cyan-400/60 bg-cyan-500/10 shadow-[0_0_30px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/30'
+                                    : ''
+                                    }`}
+                            >
+                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pl-1">Target Case</label>
+                                {casesLoading ? (
+                                    <div className="h-12 w-full rounded-xl bg-muted/20 animate-pulse" />
+                                ) : (
+                                    <div className="relative">
+                                        <select
+                                            value={selectedCaseId}
+                                            onChange={(e) => setSelectedCaseId(e.target.value)}
+                                            className="w-full appearance-none bg-background/50 border border-primary/20 rounded-xl px-5 py-4 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                                        >
+                                            <option value="" className="bg-background">-- Select a specific case --</option>
+                                            {cases.map((c: DatasetCase) => (
+                                                <option key={c.case_id} value={c.case_id} className="bg-background">
+                                                    {c.topic}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">▼</div>
+                                    </div>
+                                )}
+                            </GlassCard>
                         </div>
                     )}
                 </div>

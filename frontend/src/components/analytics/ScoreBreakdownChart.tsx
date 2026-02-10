@@ -52,7 +52,7 @@ export default function ScoreBreakdownChart({ items, modelNames }: ScoreBreakdow
     }
 
     return (
-        <ResponsiveContainer width="100%" height={320}>
+        <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 15, left: 0 }}>
                 <defs>
                     {Object.entries(DIMENSION_COLORS).map(([key, color]) => (

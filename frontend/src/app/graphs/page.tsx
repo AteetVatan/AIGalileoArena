@@ -10,6 +10,8 @@ import {
 import { useDatasets } from "@/lib/queries";
 import type { GalileoQueryParams } from "@/lib/galileoApi";
 import ModelsTable from "@/components/analytics/ModelsTable";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { NeonSpinner } from "@/components/ui/NeonSpinner";
 
 const TrendChart = lazy(() => import("@/components/analytics/TrendChart"));
 const DistributionChart = lazy(() => import("@/components/analytics/DistributionChart"));
@@ -40,37 +42,6 @@ const TABS: TabDef[] = [
 ];
 
 const WINDOW_OPTIONS = [7, 14, 30, 90] as const;
-
-function ChartLoader() {
-    return (
-        <div className="flex items-center justify-center h-64">
-            <div className="relative w-10 h-10">
-                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin" />
-                <div className="absolute inset-1 rounded-full border-2 border-transparent border-b-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.6s" }} />
-            </div>
-        </div>
-    );
-}
-
-interface CardProps {
-    title: string;
-    children: React.ReactNode;
-}
-
-function Card({ title, children }: CardProps) {
-    return (
-        <div className="relative group rounded-2xl p-px overflow-hidden">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-transparent to-purple-500/20 opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative bg-slate-900/80 backdrop-blur-xl rounded-2xl p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                <h3 className="text-xs font-semibold text-cyan-400/80 uppercase tracking-[0.15em] mb-4 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.6)]" />
-                    {title}
-                </h3>
-                {children}
-            </div>
-        </div>
-    );
-}
 
 export default function GraphsPage() {
     const [activeTab, setActiveTab] = useState(TAB_PERFORMANCE);
@@ -124,7 +95,7 @@ export default function GraphsPage() {
                     ))}
                 </div>
 
-                <Suspense fallback={<ChartLoader />}>
+                <Suspense fallback={<NeonSpinner className="h-64" />}>
                     {activeTab === TAB_PERFORMANCE && (
                         <PerformanceTab params={params} modelNames={modelNames} summaryData={summaryData} trendData={trendData} />
                     )}
@@ -163,68 +134,81 @@ function PerformanceTab({ params, modelNames, summaryData, trendData }: Performa
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card title="Score Trend">
+                <GlassCard title="Score Trend">
                     {trendData?.series?.length ? (
                         <TrendChart series={trendData.series} modelNames={modelNames} />
                     ) : (
-                        <ChartLoader />
+                        <NeonSpinner className="h-64" />
                     )}
-                </Card>
-                <Card title="Score Distribution">
+                </GlassCard>
+                <GlassCard title="Score Distribution">
                     {distData?.items?.length ? (
                         <DistributionChart items={distData.items} modelNames={modelNames} />
                     ) : (
-                        <ChartLoader />
+                        <NeonSpinner className="h-64" />
                     )}
-                </Card>
+                </GlassCard>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card title="Score Breakdown">
+                <GlassCard title="Score Breakdown">
                     {breakdownData?.items?.length ? (
                         <ScoreBreakdownChart items={breakdownData.items} modelNames={modelNames} />
                     ) : (
                         <div className="text-gray-500 h-32 flex items-center justify-center">No breakdown data</div>
                     )}
-                </Card>
-                <Card title="Radar / Spider">
+                </GlassCard>
+                <GlassCard title="Radar / Spider">
                     {radarData?.entries?.length ? (
                         <RadarChart entries={radarData.entries} modelNames={modelNames} />
                     ) : (
                         <div className="text-gray-500 h-32 flex items-center justify-center">No radar data</div>
                     )}
-                </Card>
+                </GlassCard>
             </div>
-            <Card title="All Models">
+            <GlassCard title="All Models">
                 {summaryData?.models ? (
                     <ModelsTable models={summaryData.models} windowDays={params.window ?? 30} />
                 ) : (
-                    <ChartLoader />
+                    <NeonSpinner className="h-64" />
                 )}
-            </Card>
+            </GlassCard>
         </div>
     );
 }
 
 function RobustnessTab({ params, modelNames }: TabProps) {
     const { data: distData } = useDistribution(params);
-    const { data: failData } = useFailures(params);
     const { data: hallucinationData } = useHallucinationTrend(params);
     const { data: calibrationData } = useCalibrationScatter(params);
-    const { data: datasets } = useDatasets();
-    const [heatmapDatasetId, setHeatmapDatasetId] = useState<string | null>(null);
-    const activeDatasetId = heatmapDatasetId ?? datasets?.[0]?.id ?? null;
-    const { data: heatmapData } = useHeatmap(activeDatasetId, params);
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card title="Score Stability (σ)">
-                    {distData?.items?.length ? (
-                        <div className="space-y-3">
-                            {distData.items
-                                .filter((d) => d.stddev !== null)
-                                .sort((a, b) => (a.stddev ?? 0) - (b.stddev ?? 0))
-                                .map((d, i) => (
+                <GlassCard title="Hallucination Rate Trend">
+                    {hallucinationData?.series?.length ? (
+                        <HallucinationTrendChart series={hallucinationData.series} modelNames={modelNames} />
+                    ) : (
+                        <div className="text-gray-500 h-32 flex items-center justify-center">No hallucination data</div>
+                    )}
+                </GlassCard>
+                <GlassCard title="Confidence vs Correctness">
+                    {calibrationData?.points?.length ? (
+                        <CalibrationScatter points={calibrationData.points} modelNames={modelNames} />
+                    ) : (
+                        <div className="text-gray-500 h-32 flex items-center justify-center">No calibration data</div>
+                    )}
+                </GlassCard>
+            </div>
+            <GlassCard title="Score Stability (σ)">
+                {distData?.items?.length ? (
+                    (() => {
+                        const filtered = distData.items
+                            .filter((d) => d.stddev !== null)
+                            .sort((a, b) => (a.stddev ?? 0) - (b.stddev ?? 0));
+                        const maxStddev = Math.max(...filtered.map((d) => d.stddev ?? 0), 0.01);
+                        return (
+                            <div className="space-y-3">
+                                {filtered.map((d, i) => (
                                     <div key={d.llm_id} className="flex items-center gap-3 group/row">
                                         <span className="text-xs font-mono text-cyan-500/60 w-5">{i + 1}</span>
                                         <span className="text-sm text-gray-300 w-32 truncate group-hover/row:text-white transition-colors">
@@ -233,7 +217,7 @@ function RobustnessTab({ params, modelNames }: TabProps) {
                                         <div className="flex-1 bg-slate-800/60 rounded-full h-2.5 overflow-hidden">
                                             <div
                                                 className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 rounded-full transition-all shadow-[0_0_8px_rgba(34,211,238,0.3)]"
-                                                style={{ width: `${Math.min((d.stddev ?? 0) * 20, 100)}%` }}
+                                                style={{ width: `${((d.stddev ?? 0) / maxStddev) * 100}%` }}
                                             />
                                         </div>
                                         <span className="text-xs text-gray-500 font-mono w-12 text-right">
@@ -241,68 +225,13 @@ function RobustnessTab({ params, modelNames }: TabProps) {
                                         </span>
                                     </div>
                                 ))}
-                        </div>
-                    ) : (
-                        <div className="text-gray-500 h-32 flex items-center justify-center">No stability data</div>
-                    )}
-                </Card>
-                <Card title="Failure Breakdown">
-                    {failData?.items?.length ? (
-                        <div className="space-y-2.5">
-                            {failData.items.map((f) => (
-                                <div key={`${f.llm_id}-${f.failure_type}`} className="flex items-center gap-3 group/fail hover:bg-white/[0.03] rounded-lg px-2 py-1.5 -mx-2 transition-colors">
-                                    <span className="text-sm text-gray-300 w-36 truncate group-hover/fail:text-white transition-colors">
-                                        {modelNames.get(f.llm_id) ?? f.llm_id.slice(0, 8)}
-                                    </span>
-                                    <span className="text-[10px] px-2.5 py-0.5 bg-gradient-to-r from-rose-500/20 to-rose-500/10 text-rose-400 rounded-full border border-rose-500/20 shadow-[0_0_6px_rgba(244,63,94,0.15)]">
-                                        {f.failure_type}
-                                    </span>
-                                    <span className="text-xs text-gray-500 font-mono ml-auto tabular-nums">{f.count}×</span>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-gray-500 h-32 flex items-center justify-center">No failures recorded 🎉</div>
-                    )}
-                </Card>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card title="Hallucination Rate Trend">
-                    {hallucinationData?.series?.length ? (
-                        <HallucinationTrendChart series={hallucinationData.series} modelNames={modelNames} />
-                    ) : (
-                        <div className="text-gray-500 h-32 flex items-center justify-center">No hallucination data</div>
-                    )}
-                </Card>
-                <Card title="Confidence vs Correctness">
-                    {calibrationData?.points?.length ? (
-                        <CalibrationScatter points={calibrationData.points} modelNames={modelNames} />
-                    ) : (
-                        <div className="text-gray-500 h-32 flex items-center justify-center">No calibration data</div>
-                    )}
-                </Card>
-            </div>
-            <Card title="Case Pass/Fail Heatmap">
-                <div className="flex items-center gap-3 mb-4">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider">Dataset</label>
-                    <select
-                        value={activeDatasetId ?? ""}
-                        onChange={(e) => setHeatmapDatasetId(e.target.value || null)}
-                        className="bg-slate-800/60 border border-cyan-500/20 rounded-lg px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.1)]"
-                    >
-                        {datasets?.map((ds) => (
-                            <option key={ds.id} value={ds.id}>{ds.id}</option>
-                        ))}
-                    </select>
-                </div>
-                {heatmapData?.cells?.length ? (
-                    <HeatmapChart cells={heatmapData.cells} modelNames={modelNames} />
+                            </div>
+                        );
+                    })()
                 ) : (
-                    <div className="text-gray-500 h-32 flex items-center justify-center">
-                        {activeDatasetId ? "No heatmap data for this dataset" : "No datasets available"}
-                    </div>
+                    <div className="text-gray-500 h-32 flex items-center justify-center">No stability data</div>
                 )}
-            </Card>
+            </GlassCard>
         </div>
     );
 }
@@ -312,7 +241,7 @@ function EffectivenessTab({ params, modelNames }: TabProps) {
 
     return (
         <div className="space-y-6">
-            <Card title="Galileo Effect (Uplift)">
+            <GlassCard title="Galileo Effect (Uplift)">
                 {upliftData?.items?.length ? (
                     <div className="space-y-4">
                         {upliftData.items
@@ -344,7 +273,7 @@ function EffectivenessTab({ params, modelNames }: TabProps) {
                         No uplift data — run baseline + galileo evaluations with shared batch_id
                     </div>
                 )}
-            </Card>
+            </GlassCard>
         </div>
     );
 }
@@ -357,7 +286,7 @@ function OpsTab({ params, modelNames }: TabProps) {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card title="Score vs Latency (Pareto)">
+                <GlassCard title="Score vs Latency (Pareto)">
                     {paretoData?.items?.length ? (
                         <div className="space-y-1">
                             {paretoData.items
@@ -395,14 +324,14 @@ function OpsTab({ params, modelNames }: TabProps) {
                     ) : (
                         <div className="text-gray-500 h-32 flex items-center justify-center">No operations data</div>
                     )}
-                </Card>
-                <Card title="Cost per Passing Answer">
+                </GlassCard>
+                <GlassCard title="Cost per Passing Answer">
                     {costData?.items?.length ? (
                         <CostPerPassChart items={costData.items} modelNames={modelNames} />
                     ) : (
                         <div className="text-gray-500 h-32 flex items-center justify-center">No cost data</div>
                     )}
-                </Card>
+                </GlassCard>
             </div>
 
         </div>
