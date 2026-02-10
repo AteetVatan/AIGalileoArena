@@ -229,6 +229,14 @@ class RunEvalUsecase:
 
             # Persist ML diagnostics in the existing judge_json column
             judge_json_out: dict[str, Any] = dict(debate.judge_json) if debate.judge_json else {}
+            judge_json_out["score_breakdown"] = {
+                "correctness": breakdown.correctness,
+                "grounding": breakdown.grounding,
+                "calibration": breakdown.calibration,
+                "falsifiable": breakdown.falsifiable,
+                "deference_penalty": breakdown.deference_penalty,
+                "refusal_penalty": breakdown.refusal_penalty,
+            }
             if ml_scores is not None:
                 judge_json_out["ml_scores"] = asdict(ml_scores)
                 judge_json_out["scoring_mode"] = ScoringMode.ML.value
@@ -247,6 +255,11 @@ class RunEvalUsecase:
                 judge_json=judge_json_out,
             )
             await self._repo.commit()
+
+            # best-effort: bridge to analytics ledger
+            await self._bridge_result(
+                run_id=run_id, case_id=case_row.case_id, model_key=model_key,
+            )
 
             await self._emit(run_id, EventType.CASE_SCORED, {
                 "case_id": case_row.case_id, "model_key": model_key,
@@ -276,3 +289,17 @@ class RunEvalUsecase:
 
     async def _emit(self, run_id: str, event_type: str, payload: dict) -> None:
         await emit_and_persist(self._bus, self._repo, run_id, event_type, payload)
+
+    async def _bridge_result(
+        self, *, run_id: str, case_id: str, model_key: str,
+    ) -> None:
+        results = await self._repo.get_run_results(
+            run_id, model_key=model_key, case_id=case_id,
+        )
+        if not results:
+            return
+        run = await self._repo.get_run(run_id)
+        if not run:
+            return
+        from app.usecases.analytics_bridge import bridge_run_result_to_eval
+        await bridge_run_result_to_eval(self._session, results[-1], run)

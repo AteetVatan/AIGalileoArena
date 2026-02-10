@@ -17,14 +17,15 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSON, JSONB, UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app.core.domain.schemas import RunStatus, ScoringMode
+from app.core.domain.schemas import EvalMode, RunStatus, RunType, ScoringMode
 
 
 class Base(DeclarativeBase):
@@ -229,4 +230,103 @@ class CachedResultSetRow(Base):
             name="uq_cache_slot",
         ),
         Index("ix_cache_dataset_model_case_exp", "dataset_id", "model_key", "case_id", "expires_at"),
+    )
+
+
+# --- galileo analytics ---
+
+import uuid as _uuid
+from decimal import Decimal
+
+
+def _gen_uuid() -> _uuid.UUID:
+    return _uuid.uuid4()
+
+
+def _utcnow_tz() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class LLMModelRow(Base):
+    __tablename__ = "llm_model"
+
+    id: Mapped[_uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=_gen_uuid,
+    )
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    model_name: Mapped[str] = mapped_column(Text, nullable=False)
+    model_version: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow_tz,
+    )
+
+    eval_runs: Mapped[list["GalileoEvalRunRow"]] = relationship(
+        back_populates="llm_model",
+    )
+
+
+class GalileoEvalRunRow(Base):
+    __tablename__ = "galileo_eval_run"
+
+    run_id: Mapped[_uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=_gen_uuid,
+    )
+    llm_id: Mapped[_uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("llm_model.id"), nullable=False,
+    )
+    dataset_id: Mapped[str] = mapped_column(Text, nullable=False)
+    dataset_version: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    case_id: Mapped[str] = mapped_column(Text, nullable=False)
+    eval_mode: Mapped[str] = mapped_column(
+        Text, default=EvalMode.GALILEO.value, nullable=False,
+    )
+    score_total: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
+    score_components: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    failure_flags: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    run_type: Mapped[str] = mapped_column(
+        Text, default=RunType.USER.value, nullable=False,
+    )
+    benchmark_tag: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    batch_id: Mapped[Optional[_uuid.UUID]] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=True,
+    )
+    source_run_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cost_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
+    idempotency_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    app_version: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    prompt_version: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    git_sha: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow_tz,
+    )
+
+    llm_model: Mapped["LLMModelRow"] = relationship(back_populates="eval_runs")
+    payload: Mapped[Optional["GalileoEvalPayloadRow"]] = relationship(
+        back_populates="eval_run", uselist=False,
+    )
+
+    __table_args__ = (
+        Index("ix_ger_llm_created", "llm_id", "created_at"),
+        Index("ix_ger_runtype_tag", "run_type", "benchmark_tag", "created_at"),
+        Index("ix_ger_eval_mode", "eval_mode", "created_at"),
+        Index("ix_ger_ds_case", "dataset_id", "case_id", "created_at"),
+    )
+
+
+class GalileoEvalPayloadRow(Base):
+    __tablename__ = "galileo_eval_payload"
+
+    run_id: Mapped[_uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("galileo_eval_run.run_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    result_payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+    eval_run: Mapped["GalileoEvalRunRow"] = relationship(
+        back_populates="payload",
     )

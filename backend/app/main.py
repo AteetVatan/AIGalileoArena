@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.datasets import router as datasets_router
+from app.api.routes.galileo import router as galileo_router
 from app.api.routes.models import router as models_router
 from app.api.routes.runs import router as runs_router
 from app.config import settings
@@ -78,6 +79,10 @@ async def lifespan(app: FastAPI):
                 )
                 settings.ml_scoring_enabled = False
 
+        # --- Freshness sweep scheduler (optional) ---
+        from app.infra.scheduler import start_scheduler
+        start_scheduler()
+
         logger.info("Galileo Arena ready.")
     except asyncio.CancelledError:
         # Expected during hot reload - let it propagate so uvicorn can handle it
@@ -92,9 +97,10 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         try:
+            from app.infra.scheduler import stop_scheduler
+            stop_scheduler()
             logger.info("Shutting down.")
         except asyncio.CancelledError:
-            # Expected during hot reload - suppress error logging
             logger.debug("Shutdown cancelled (likely due to hot reload)")
             raise
 
@@ -115,6 +121,7 @@ app.add_middleware(
 )
 
 app.include_router(datasets_router)
+app.include_router(galileo_router)
 app.include_router(models_router)
 app.include_router(runs_router)
 

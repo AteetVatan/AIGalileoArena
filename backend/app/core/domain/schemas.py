@@ -95,6 +95,38 @@ class PassFlipStatus(str, Enum):
     IMPROVEMENT = "improvement"
 
 
+class RunType(str, Enum):
+    USER = "user"
+    SCHEDULED = "scheduled"
+    BACKFILL = "backfill"
+
+
+class EvalMode(str, Enum):
+    BASELINE = "baseline"
+    GALILEO = "galileo"
+
+
+class FreshnessSource(str, Enum):
+    USER = "user"
+    SCHEDULED = "scheduled"
+    MIXED = "mixed"
+    NONE = "none"
+
+
+BENCHMARK_TAG_AUTO_SWEEP = "auto_sweep"
+INACTIVITY_THRESHOLD_DAYS = 6
+SWEEP_CASES_COUNT = 5
+
+DIMENSION_KEYS: tuple[str, ...] = (
+    "correctness",
+    "grounding",
+    "calibration",
+    "falsifiable",
+    "deference_penalty",
+    "refusal_penalty",
+)
+
+
 # --- evidence / dataset ---
 
 class EvidencePacket(BaseModel):

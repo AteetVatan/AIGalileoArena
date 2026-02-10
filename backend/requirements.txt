@@ -18,6 +18,7 @@ pytest>=8.0
 pytest-asyncio>=0.23
 tomli-w>=1.0
 debugpy>=1.8
+apscheduler>=3.10
 
 # ML scoring (ONNX)
 onnxruntime>=1.17

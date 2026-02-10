@@ -38,7 +38,7 @@ async def preflight_openai(api_key: str) -> KeyValidationResult:
         # Primary: Try models.list() - lightweight, no cost
         try:
             await asyncio.wait_for(
-                client.models.list(limit=1),
+                client.models.list(),
                 timeout=PREFLIGHT_TIMEOUT,
             )
             return KeyValidationResult(
@@ -310,7 +310,7 @@ async def preflight_deepseek(api_key: str) -> KeyValidationResult:
         # Primary: Try models.list() - lightweight, no cost
         try:
             await asyncio.wait_for(
-                client.models.list(limit=1),
+                client.models.list(),
                 timeout=PREFLIGHT_TIMEOUT,
             )
             return KeyValidationResult(
@@ -391,7 +391,7 @@ async def preflight_grok(api_key: str) -> KeyValidationResult:
         # Primary: Try models.list() - lightweight, no cost
         try:
             await asyncio.wait_for(
-                client.models.list(limit=1),
+                client.models.list(),
                 timeout=PREFLIGHT_TIMEOUT,
             )
             return KeyValidationResult(

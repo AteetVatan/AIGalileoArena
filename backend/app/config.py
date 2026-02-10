@@ -151,5 +151,22 @@ class Settings(BaseSettings):
         }
         return key_map.get(provider.lower())
 
+    # --- galileo sweep ---
+    sweep_enabled: bool = False
+    sweep_cron_hour: int = 3
+    sweep_cases_count: int = 5
+    sweep_include_baseline: bool = True
+    sweep_max_evals_per_run: int = 50
+    sweep_max_parallel: int = 3
+    sweep_max_cost_usd: float = 5.0
+
+    # --- analytics query timeouts (seconds) ---
+    analytics_timeout_summary_s: int = 5
+    analytics_timeout_trend_s: int = 5
+    analytics_timeout_heatmap_s: int = 15
+    analytics_timeout_distribution_s: int = 10
+    analytics_timeout_default_s: int = 10
+    analytics_cache_ttl_s: int = 60
+
 
 settings = Settings()

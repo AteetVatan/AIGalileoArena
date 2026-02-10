@@ -33,6 +33,7 @@ Complete step-by-step guide for **local debugging** and **production deployment*
    - 9f. Reverse Proxy (Nginx)
 10. [API Verification](#10-api-verification)
 11. [Troubleshooting](#11-troubleshooting)
+12. [Galileo Analytics](#12-galileo-analytics)
 
 ---
 
@@ -67,25 +68,26 @@ Directory layout:
 AIGalileoArena/
 ├── backend/              # FastAPI (Python 3.12)
 │   ├── app/              # Application code
-│   │   ├── api/          # FastAPI routes
+│   │   ├── api/          # FastAPI routes (incl. /api/galileo analytics)
 │   │   ├── config.py     # pydantic-settings (reads .env)
 │   │   ├── core/domain/  # Pure logic: schemas, scoring, metrics
 │   │   ├── infra/        # IO adapters: db, llm, debate, sse
-│   │   │   └── ml/       # ONNX ML scoring (model_registry, scorer, exemplars)
-│   │   └── usecases/     # Orchestration: run_eval, compute_summary
+│   │   │   ├── ml/       # ONNX ML scoring (model_registry, scorer, exemplars)
+│   │   │   └── scheduler.py  # APScheduler sweep cron (optional)
+│   │   └── usecases/     # Orchestration: run_eval, analytics_bridge, freshness_sweep
 │   ├── alembic/          # Database migrations
 │   ├── datasets/         # Prebuilt JSON datasets
 │   ├── models/           # ONNX model weights (gitignored, export via script)
-│   ├── scripts/          # Dev-only tooling (export_onnx_models.py)
+│   ├── scripts/          # Dev-only tooling (export_onnx_models, backfill_eval_runs)
 │   ├── tests/            # pytest test suite
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/             # Next.js 14 (App Router)
 │   ├── src/
-│   │   ├── app/          # Pages & layouts
-│   │   ├── components/   # React components
+│   │   ├── app/          # Pages & layouts (incl. /graphs analytics page)
+│   │   ├── components/   # React components (incl. analytics/ charts)
 │   │   ├── hooks/        # Custom React hooks
-│   │   └── lib/          # API client, types, constants
+│   │   └── lib/          # API client, types, constants, galileoApi/Queries
 │   ├── Dockerfile
 │   └── package.json
 └── docker-compose.yml
@@ -126,10 +128,18 @@ copy backend\.env.example backend\.env
 | `LOG_LEVEL`         | No       | `INFO`                                                                 | Python logging level                 |
 | `ML_SCORING_ENABLED` | No      | `true`                                                                 | Enable ONNX ML-enhanced scoring      |
 | `ML_MODELS_DIR`     | No       | `models`                                                               | Directory containing ONNX models     |
+| `SWEEP_ENABLED`     | No       | `false`                                                                | Enable automated freshness sweep scheduler |
+| `SWEEP_CRON_HOUR`   | No       | `3`                                                                    | UTC hour for daily sweep cron job    |
+| `SWEEP_CASES_COUNT` | No       | `5`                                                                    | Cases per model per sweep            |
+| `SWEEP_MAX_EVALS_PER_RUN` | No | `50`                                                                   | Max total evaluations per sweep run  |
+| `SWEEP_MAX_PARALLEL`| No       | `3`                                                                    | Max concurrent sweep evaluations     |
+| `SWEEP_MAX_COST_USD`| No       | `5.0`                                                                  | Dollar budget limit per sweep run    |
+| `SWEEP_INCLUDE_BASELINE` | No  | `true`                                                                 | Also run baseline mode during sweep  |
 
 > **\*** At least **one** LLM provider API key is required to run evaluations.
 
 > See [ML Scoring (ONNX)](#8-ml-scoring-onnx) for the full list of ML configuration variables.
+> See [Galileo Analytics](#12-galileo-analytics) for analytics-specific configuration.
 
 ### Frontend
 
@@ -254,6 +264,7 @@ On startup the backend will:
 - Create/verify database tables
 - Load all datasets into PostgreSQL
 - Load ONNX ML scoring models (if `ML_SCORING_ENABLED=true` and models are exported)
+- Start the freshness sweep scheduler (if `SWEEP_ENABLED=true`)
 - Serve the API at `http://localhost:8000`
 - Expose Swagger docs at `http://localhost:8000/docs`
 
@@ -428,6 +439,16 @@ Existing migrations:
 - `004_single_case.py` — Single-case run support
 - `005_add_safe_to_answer.py` — Safe-to-answer flag on dataset cases
 - `006_add_scoring_mode.py` — Scoring mode column on runs (deterministic/ml)
+- `007_galileo_analytics.py` — Analytics tables: `llm_model`, `galileo_eval_run`, `galileo_eval_payload` + pgcrypto extension
+
+**Backfill script:** After running migration 007, optionally populate the analytics ledger from existing run results:
+
+```bash
+cd backend
+python -m scripts.backfill_eval_runs
+```
+
+This is idempotent (`ON CONFLICT DO NOTHING`) and safe to re-run.
 
 > **Dev convenience:** On startup, `init_db()` in `session.py` calls `Base.metadata.create_all` to auto-create tables. For production always use Alembic migrations.
 
@@ -468,6 +489,9 @@ Test files:
 - `test_debate_runner.py` — Debate runner (unit)
 - `test_toml_serde.py` — TOML serialisation (unit)
 - `test_validation.py` — Schema validation (unit)
+- `test_model_identity.py` — Model key parser (`parse_model_key`, roundtrip, error paths)
+- `test_galileo_schemas.py` — Pydantic analytics schemas (nullable fields, defaults, serialization)
+- `test_galileo_analytics.py` — Sweep case selection (determinism, stratification), idempotency keys, bridge helpers
 
 > Unit tests use pure fixtures from `conftest.py` and do not require a running database or ONNX models.
 
@@ -1078,7 +1102,25 @@ Invoke-WebRequest -Uri http://localhost:8000/datasets | Select-Object -ExpandPro
 
 # Frontend (open in browser)
 # http://localhost:3000
+
+# Analytics page (open in browser)
+# http://localhost:3000/graphs
 ```
+
+**Verify Galileo Analytics Endpoints:**
+
+```bash
+# Model summary
+curl http://localhost:8000/api/galileo/summary?window=30
+
+# Score trend
+curl http://localhost:8000/api/galileo/trend?window=30
+
+# Score distribution
+curl http://localhost:8000/api/galileo/distribution?window=30
+```
+
+> Analytics endpoints return empty arrays when no evaluation data exists yet. Run evaluations or the backfill script to populate data.
 
 ---
 
@@ -1308,3 +1350,101 @@ Ensure `onnxruntime` is in `requirements.txt` and installed in your virtual envi
 ```bash
 pip install onnxruntime>=1.17
 ```
+
+---
+
+## 12. Galileo Analytics
+
+The analytics subsystem provides aggregate performance tracking, model comparison, and freshness monitoring for all LLMs evaluated by the platform.
+
+### 12a. Database Tables
+
+Migration `007_galileo_analytics.py` creates:
+
+| Table | Purpose |
+|-------|--------|
+| `llm_model` | Canonical LLM identity (provider + model_name, expression unique index) |
+| `galileo_eval_run` | Append-only evaluation ledger (one row per case × model evaluation) |
+| `galileo_eval_payload` | Optional raw payload / debug data |
+
+The `pgcrypto` extension is enabled for UUID generation.
+
+### 12b. Analytics Bridge
+
+Every evaluation result is automatically bridged to the analytics ledger via `analytics_bridge.py`. This runs inside a **nested savepoint** so failures never roll back the core evaluation pipeline.
+
+### 12c. Backfill Existing Data
+
+To populate analytics from existing evaluation results:
+
+```bash
+cd backend
+python -m scripts.backfill_eval_runs
+```
+
+This is idempotent and safe to re-run.
+
+### 12d. Freshness Sweep
+
+The sweep automatically benchmarks LLMs that haven't been evaluated in 6+ days. It uses:
+- `pg_try_advisory_xact_lock` to prevent concurrent sweeps
+- Deterministic MD5-seeded case selection, stratified across datasets
+- Budget guardrails: max evals, max cost, max parallel
+
+**Manual trigger:**
+```bash
+curl -X POST http://localhost:8000/api/galileo/admin/run_freshness_sweep
+```
+
+**Automated scheduling (APScheduler):**
+
+Set in `backend/.env`:
+```
+SWEEP_ENABLED=true
+SWEEP_CRON_HOUR=3       # Daily at 03:00 UTC
+```
+
+The scheduler starts automatically on app boot when `SWEEP_ENABLED=true`.
+
+### 12e. Analytics API Endpoints
+
+All endpoints are under `/api/galileo/`:
+
+| Endpoint | Description |
+|----------|------------|
+| `GET /summary` | All-models leaderboard with windowed averages |
+| `GET /trend` | Score trend time series per model |
+| `GET /distribution` | Score distribution with percentiles |
+| `GET /heatmap/{dataset_id}` | Per-case × per-model score heatmap |
+| `GET /radar` | Multi-dimension radar data |
+| `GET /uplift` | Galileo vs baseline score delta |
+| `GET /failures` | Failure type breakdown per model |
+| `GET /pareto` | Score vs latency vs cost Pareto |
+| `POST /admin/run_freshness_sweep` | Trigger sweep manually |
+
+Common query parameters: `window` (days), `include_scheduled`, `llm_ids`, `eval_mode`.
+
+### 12f. Analytics Timeout Configuration
+
+Per-endpoint query timeouts protect the database from expensive analytics queries:
+
+| Variable | Default | Description |
+|----------|---------|------------|
+| `ANALYTICS_TIMEOUT_SUMMARY_S` | `5` | Summary endpoint timeout (seconds) |
+| `ANALYTICS_TIMEOUT_TREND_S` | `5` | Trend endpoint timeout |
+| `ANALYTICS_TIMEOUT_HEATMAP_S` | `15` | Heatmap endpoint timeout |
+| `ANALYTICS_TIMEOUT_DISTRIBUTION_S` | `10` | Distribution endpoint timeout |
+| `ANALYTICS_TIMEOUT_DEFAULT_S` | `10` | Default for other endpoints |
+| `ANALYTICS_CACHE_TTL_S` | `60` | Server-side TTL cache for summary/trend |
+
+### 12g. Frontend Analytics Page
+
+The analytics dashboard is accessible at `/graphs` (linked from the global header as "📊 Analytics").
+
+It features:
+- **4 tabs:** Performance, Robustness, Galileo Effect, Operations
+- **Global filters:** Window period dropdown, "Include scheduled" toggle
+- **Lazy loading:** Chart components and data fetched on tab switch
+- **Graceful empty states:** Informative messages when no data exists
+
+Charts use Recharts with a dark theme matching the app's design system.
