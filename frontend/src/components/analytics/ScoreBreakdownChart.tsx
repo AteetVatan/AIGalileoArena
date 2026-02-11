@@ -6,12 +6,13 @@ import {
     CartesianGrid,
 } from "recharts";
 import type { ScoreBreakdownItem } from "@/lib/galileoTypes";
+import { TOOLTIP_STYLE } from "@/lib/chartConfig";
 
 const DIMENSION_COLORS: Record<string, string> = {
     correctness: "#22d3ee",
     grounding: "#4ade80",
     calibration: "#fbbf24",
-    falsifiable: "#c084fc",
+    falsifiable: "#14b8a6",
     deference_penalty: "#fb7185",
     refusal_penalty: "#f87171",
 };
@@ -66,16 +67,7 @@ export default function ScoreBreakdownChart({ items, modelNames }: ScoreBreakdow
                 <XAxis dataKey="name" stroke="#334155" fontSize={11} angle={-10} textAnchor="end" tickLine={false} />
                 <YAxis stroke="#334155" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip
-                    contentStyle={{
-                        backgroundColor: "rgba(15, 23, 42, 0.85)",
-                        backdropFilter: "blur(12px)",
-                        WebkitBackdropFilter: "blur(12px)",
-                        border: "1px solid rgba(34, 211, 238, 0.15)",
-                        borderLeft: "3px solid rgba(34, 211, 238, 0.6)",
-                        borderRadius: "12px",
-                        color: "#e2e8f0",
-                        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-                    }}
+                    contentStyle={TOOLTIP_STYLE}
                     cursor={{ fill: "rgba(34, 211, 238, 0.05)" }}
                 />
                 <Legend

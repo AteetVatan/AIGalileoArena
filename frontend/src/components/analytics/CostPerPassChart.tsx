@@ -6,9 +6,10 @@ import {
     CartesianGrid, Cell,
 } from "recharts";
 import type { CostPerPassItem } from "@/lib/galileoTypes";
+import { TOOLTIP_STYLE } from "@/lib/chartConfig";
 
 const BAR_COLORS = [
-    "#fb7185", "#f472b6", "#c084fc", "#a78bfa", "#60a5fa",
+    "#fb7185", "#f472b6", "#14b8a6", "#f59e0b", "#60a5fa",
     "#22d3ee", "#2dd4bf", "#4ade80", "#fbbf24", "#fb923c",
 ];
 
@@ -59,16 +60,7 @@ export default function CostPerPassChart({ items, modelNames }: CostPerPassChart
                     tickFormatter={(v: number) => `$${v}`}
                 />
                 <Tooltip
-                    contentStyle={{
-                        backgroundColor: "rgba(15, 23, 42, 0.85)",
-                        backdropFilter: "blur(12px)",
-                        WebkitBackdropFilter: "blur(12px)",
-                        border: "1px solid rgba(34, 211, 238, 0.15)",
-                        borderLeft: "3px solid rgba(251, 113, 133, 0.6)",
-                        borderRadius: "12px",
-                        color: "#e2e8f0",
-                        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-                    }}
+                    contentStyle={TOOLTIP_STYLE}
                     formatter={(v: number, name: string) => {
                         if (name === "cost") return [`$${v.toFixed(4)}`, "Cost / Pass"];
                         return [v, name];

@@ -126,7 +126,7 @@ export default function DatasetsPage() {
 
                 {/* Header / Intro - Left Side */}
                 <div className="lg:col-span-4 flex flex-col justify-center space-y-6 lg:sticky lg:top-24">
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl text-white font-great-vibes leading-tight bg-gradient-to-r from-cyan-200 via-indigo-200 to-white bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]" style={{ fontFamily: 'var(--font-great-vibes)' }}>
+                    <h1 className="text-4xl sm:text-5xl lg:text-6xl text-white font-great-vibes leading-tight bg-gradient-to-r from-cyan-200 via-teal-200 to-white bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(34,211,238,0.15)]" style={{ fontFamily: 'var(--font-great-vibes)' }}>
                         Systema <span className="hidden sm:inline"><br /></span>Cosmicum
                     </h1>
                     <p className="text-lg text-slate-300 font-light leading-relaxed backdrop-blur-sm bg-slate-900/30 p-4 rounded-xl border border-white/5">
@@ -219,7 +219,7 @@ export default function DatasetsPage() {
                                 <button
                                     onClick={handleLaunch}
                                     disabled={launching || !selectedModel}
-                                    className="group relative w-full h-14 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 disabled:from-slate-800 disabled:to-slate-900 transition-all duration-300 shadow-lg hover:shadow-cyan-500/25"
+                                    className="group relative w-full h-14 overflow-hidden rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 disabled:from-slate-800 disabled:to-slate-900 transition-all duration-300 shadow-lg hover:shadow-cyan-500/25"
                                 >
                                     <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-out skew-x-12 -translate-x-[150%]" />
                                     <span className="relative flex items-center justify-center gap-2 font-medium text-lg tracking-wide text-white">

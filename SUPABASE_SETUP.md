@@ -21,6 +21,22 @@ Complete walkthrough: create project → connect app → migrate schema → migr
 
 Go to **Project Settings → Database** (left sidebar → gear icon → Database).
 
+Open your Supabase project dashboard (make sure you’re inside the project, not the org overview).
+
+Click Connect in the top header bar.
+
+In the modal/panel, go to Connection string (or “Database connection”) and set:
+
+Type: URI
+
+You’ll see the three URIs:
+
+Direct connection
+
+Session pooler (port 5432)
+
+Transaction pooler (port 6543)
+
 You need **three** connection strings. Supabase shows them under **Connection String → URI**.
 
 ### 2a. Session Pooler (for app + migrations)
@@ -31,6 +47,9 @@ You need **three** connection strings. Supabase shows them under **Connection St
 - Format:
   ```
   postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+
+  postgresql://postgres.mjdixgwduzzsdrjhttxw:[YOUR-PASSWORD]@aws-1-eu-west-1.pooler.supabase.com:5432/postgres
+
   ```
 - **Used for**: app runtime, Alembic migrations, CI/CD
 - **Why**: supports prepared statements, works on IPv4 + IPv6
@@ -105,15 +124,22 @@ DATABASE_URL=postgresql+asyncpg://app_user.<project-ref>:<password>@aws-0-<regio
 
 # Migrations / admin (postgres role, Session pooler)
 DATABASE_URL_MIGRATIONS=postgresql+asyncpg://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+
+# Require SSL for runtime connections (must be true for Supabase)
+DATABASE_REQUIRE_SSL=true
 ```
 
 Replace `<project-ref>`, `<password>`, and `<region>` with your actual values from Step 2.
 
 > **Important**: Keep the `postgresql+asyncpg://` prefix — it tells SQLAlchemy to use the `asyncpg` driver.
+>
+> **Note**: `DATABASE_REQUIRE_SSL=true` is required — without it the runtime engine connects without SSL even though Alembic's `env.py` hardcodes `ssl: require`.
 
 ---
 
 ## 5. Run Alembic Migrations (Create Tables on Supabase)
+
+> **Note**: `alembic.ini` still contains the old local URL (`postgresql+asyncpg://galileo:...@localhost`). This is harmless — `alembic/env.py` overrides it with `settings.database_url_migrations` at runtime. You can leave it as-is or blank it out to avoid confusion.
 
 ```bash
 cd backend
@@ -128,7 +154,7 @@ Expected output:
 INFO  [alembic.runtime.migration] Running upgrade  -> 001, initial schema
 INFO  [alembic.runtime.migration] Running upgrade 001 -> 002, add phase round to messages
 ...
-INFO  [alembic.runtime.migration] Running upgrade 006 -> 007, galileo analytics
+INFO  [alembic.runtime.migration] Running upgrade 007 -> 008, debate usage
 ```
 
 **If you get an SSL error**: make sure you're using the Session pooler URL (not Direct) and that `alembic/env.py` has `connect_args={"ssl": "require"}` (already applied in the code changes).
@@ -158,6 +184,8 @@ uvicorn app.main:app --reload
 
 ## 7. Migrate Existing Data from Local PostgreSQL
 
+> **Prerequisite**: `pg_dump`, `pg_restore`, and `psql` CLI tools must be available on your PATH. If you only have PostgreSQL running inside Docker (no local install), either install the [PostgreSQL client tools](https://www.postgresql.org/download/) or run the commands from inside the container with `docker exec`.
+
 ### 7a. Stop writes (freeze local DB)
 
 Stop the backend if it's currently running against the local DB.
@@ -169,45 +197,28 @@ Make sure your local Docker PostgreSQL is running:
 docker compose up postgres -d
 ```
 
-Set SSL mode and dump data only (schema is handled by Alembic):
+Dump data only (schema is handled by Alembic). Since PostgreSQL runs in Docker, use `docker exec`:
 
-```bash
-# Custom format (best for large datasets)
-pg_dump -h localhost -U galileo -d galileo_arena ^
-  --data-only --format=custom ^
-  -f galileo_data.dump
-```
-
-Or as plain SQL (simpler, reviewable):
-```bash
-pg_dump -h localhost -U galileo -d galileo_arena ^
-  --data-only --column-inserts --format=plain ^
-  -f galileo_data.sql
+```powershell
+# Runs pg_dump inside the container; output redirected to local file
+docker exec galileo-pg pg_dump -h localhost -U galileo -d galileo_arena --data-only --column-inserts --format=plain > galileo_data.sql
 ```
 
 ### 7c. Import into Supabase
 
-Set SSL for CLI tools:
-```bash
-set PGSSLMODE=require
+Since `psql` is also inside Docker, pipe the local SQL file into the container:
+
+```powershell
+Get-Content galileo_data.sql | docker exec -i galileo-pg psql "postgresql://postgres.<project-ref>:<password>@db.<project-ref>.supabase.co:5432/postgres?sslmode=require"
 ```
 
-**From custom dump:**
-```bash
-pg_restore ^
-  -h db.<project-ref>.supabase.co -p 5432 ^
-  -U postgres -d postgres ^
-  --data-only --no-owner --no-privileges ^
-  galileo_data.dump
-```
-
-**From SQL dump:**
-```bash
-psql "postgresql://postgres.<project-ref>:<password>@db.<project-ref>.supabase.co:5432/postgres?sslmode=require" ^
-  -f galileo_data.sql
+```powershell
+Get-Content galileo_data.sql | docker exec -i galileo-pg psql "postgresql://postgres.mjdixgwduzzsdrjhttxw:X^38rsRS!270Z5Ehjy9bbKy2*@aws-1-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
 ```
 
 > You'll be prompted for the password (the one from Step 1).
+>
+> **IPv4 networks**: The Direct connection host (`db.<project-ref>.supabase.co`) resolves to IPv6. If you're on an IPv4-only network, use the Session Pooler host (`aws-0-<region>.pooler.supabase.com`) instead.
 
 ### 7d. Fix sequences after restore
 
@@ -251,7 +262,13 @@ Compare counts against local DB to confirm all data transferred.
 
 ---
 
-## 9. Cleanup
+## 9. Row Level Security (RLS)
+
+Supabase enables RLS by default on tables created via its dashboard. Since our tables are created by **Alembic**, RLS is **not** enabled — which is correct for a single-tenant backend-to-DB setup. If you later need multi-tenant or direct-from-browser access via Supabase client libraries, enable RLS and add policies per table.
+
+---
+
+## 10. Cleanup
 
 ```bash
 # Stop local Docker PostgreSQL

@@ -24,8 +24,8 @@ function getAvatarInitial(role: string): string {
 function getAvatarGradient(role: string): string {
   const gradientMap: Record<string, string> = {
     Orthodox: "from-blue-400 to-cyan-500",
-    Heretic: "from-pink-500 to-purple-600",
-    Skeptic: "from-purple-400 to-indigo-500",
+    Heretic: "from-rose-500 to-orange-600",
+    Skeptic: "from-amber-400 to-yellow-600",
     Judge: "from-emerald-400 to-teal-500",
   };
   return gradientMap[role] || "from-gray-400 to-gray-500";

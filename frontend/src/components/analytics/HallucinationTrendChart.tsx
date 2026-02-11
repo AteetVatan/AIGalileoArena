@@ -6,10 +6,11 @@ import {
     Legend, CartesianGrid,
 } from "recharts";
 import type { HallucinationTrendSeries } from "@/lib/galileoTypes";
+import { TOOLTIP_STYLE } from "@/lib/chartConfig";
 
 const PALETTE = [
-    "#22d3ee", "#fb7185", "#c084fc", "#4ade80", "#fbbf24",
-    "#60a5fa", "#f472b6", "#2dd4bf", "#fb923c", "#a78bfa",
+    "#22d3ee", "#fb7185", "#14b8a6", "#4ade80", "#fbbf24",
+    "#60a5fa", "#f472b6", "#2dd4bf", "#fb923c", "#f59e0b",
 ];
 
 interface HallucinationTrendChartProps {
@@ -66,16 +67,7 @@ export default function HallucinationTrendChart({ series, modelNames }: Hallucin
                     tickFormatter={(v: number) => `${v}%`}
                 />
                 <Tooltip
-                    contentStyle={{
-                        backgroundColor: "rgba(15, 23, 42, 0.85)",
-                        backdropFilter: "blur(12px)",
-                        WebkitBackdropFilter: "blur(12px)",
-                        border: "1px solid rgba(34, 211, 238, 0.15)",
-                        borderLeft: "3px solid rgba(251, 113, 133, 0.6)",
-                        borderRadius: "12px",
-                        color: "#e2e8f0",
-                        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-                    }}
+                    contentStyle={TOOLTIP_STYLE}
                     formatter={(v: number) => [`${v}%`, "Hallucination Rate"]}
                 />
                 <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />

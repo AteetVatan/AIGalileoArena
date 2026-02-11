@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, Suspense, lazy } from "react";
+import { BarChart3, Shield, Settings } from "lucide-react";
 import {
     useModelsSummary, useModelsTrend, useDistribution,
     useUplift, useFailures, usePareto,
@@ -12,6 +13,7 @@ import type { GalileoQueryParams } from "@/lib/galileoApi";
 import ModelsTable from "@/components/analytics/ModelsTable";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { NeonSpinner } from "@/components/ui/NeonSpinner";
+import type { LucideIcon } from "lucide-react";
 
 const TrendChart = lazy(() => import("@/components/analytics/TrendChart"));
 const DistributionChart = lazy(() => import("@/components/analytics/DistributionChart"));
@@ -31,14 +33,14 @@ const TAB_OPS = "ops";
 interface TabDef {
     id: string;
     label: string;
-    icon: string;
+    icon: LucideIcon;
 }
 
 const TABS: TabDef[] = [
-    { id: TAB_PERFORMANCE, label: "Performance", icon: "📊" },
-    { id: TAB_ROBUSTNESS, label: "Robustness", icon: "🛡️" },
-    // { id: TAB_EFFECTIVENESS, label: "Galileo Effect", icon: "🔬" },  // TODO: re-enable when baseline mode is implemented
-    { id: TAB_OPS, label: "Operations", icon: "⚙️" },
+    { id: TAB_PERFORMANCE, label: "Performance", icon: BarChart3 },
+    { id: TAB_ROBUSTNESS, label: "Robustness", icon: Shield },
+    // { id: TAB_EFFECTIVENESS, label: "Galileo Effect", icon: Microscope },  // TODO: re-enable when baseline mode is implemented
+    { id: TAB_OPS, label: "Operations", icon: Settings },
 ];
 
 const WINDOW_OPTIONS = [7, 14, 30, 90] as const;
@@ -66,12 +68,12 @@ export default function GraphsPage() {
     }, [summaryData]);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white pt-16">
+        <div className="min-h-screen text-white pt-16">
             <div className="max-w-7xl mx-auto px-4 pt-4 pb-2 flex items-center justify-end gap-3">
                 <select
                     value={window}
                     onChange={(e) => setWindow(Number(e.target.value))}
-                    className="bg-slate-800/60 border border-cyan-500/20 rounded-lg px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.1)] transition-shadow hover:shadow-[0_0_12px_rgba(6,182,212,0.2)]"
+                    className="bg-white/[0.04] border border-white/[0.06] rounded-lg px-3 py-1.5 text-sm text-white/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-all"
                 >
                     {WINDOW_OPTIONS.map((w) => (
                         <option key={w} value={w}>{w}d window</option>
@@ -80,19 +82,26 @@ export default function GraphsPage() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 py-6">
-                <div className="flex gap-1 mb-6 bg-slate-800/40 backdrop-blur-sm rounded-2xl p-1 w-fit border border-white/5">
-                    {TABS.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === tab.id
-                                ? "bg-gradient-to-r from-cyan-500/25 to-purple-500/25 text-cyan-200 shadow-[0_0_20px_rgba(6,182,212,0.15)] border border-cyan-500/20"
-                                : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-                                }`}
-                        >
-                            {tab.icon} {tab.label}
-                        </button>
-                    ))}
+                <div className="flex gap-0 mb-6 border-b border-white/[0.06] w-fit">
+                    {TABS.map((tab) => {
+                        const Icon = tab.icon;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`relative px-5 py-3 text-sm font-medium transition-all duration-300 flex items-center gap-2 ${activeTab === tab.id
+                                    ? "text-cyan-300"
+                                    : "text-white/35 hover:text-white/60"
+                                    }`}
+                            >
+                                <Icon className="w-4 h-4" />
+                                {tab.label}
+                                {activeTab === tab.id && (
+                                    <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-cyan-400 to-teal-400 rounded-full" />
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 <Suspense fallback={<NeonSpinner className="h-64" />}>
@@ -301,7 +310,7 @@ function OpsTab({ params, modelNames }: TabProps) {
                                 .sort((a, b) => (b.avg_score ?? 0) - (a.avg_score ?? 0))
                                 .map((p, i) => (
                                     <div key={p.llm_id} className="flex items-center gap-4 py-2.5 border-b border-white/[0.04] hover:bg-white/[0.03] rounded-lg px-2 -mx-2 transition-colors group/row">
-                                        <span className="text-xs font-bold w-6 h-6 flex items-center justify-center rounded-md bg-gradient-to-br from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/20">
+                                        <span className="text-xs font-bold w-6 h-6 flex items-center justify-center rounded-md bg-gradient-to-br from-cyan-500/20 to-teal-500/20 text-cyan-400 border border-cyan-500/20">
                                             {i + 1}
                                         </span>
                                         <span className="text-sm text-gray-300 w-36 truncate group-hover/row:text-white transition-colors">

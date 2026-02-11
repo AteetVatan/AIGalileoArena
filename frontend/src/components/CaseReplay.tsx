@@ -2,8 +2,8 @@
 
 const ROLE_BORDERS: Record<string, string> = {
   Orthodox: "border-cyan-500/30 bg-gradient-to-r from-blue-500/10 to-cyan-500/10",
-  Heretic: "border-pink-500/30 bg-gradient-to-r from-pink-500/10 to-purple-500/10",
-  Skeptic: "border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-indigo-500/10",
+  Heretic: "border-rose-500/30 bg-gradient-to-r from-rose-500/10 to-orange-500/10",
+  Skeptic: "border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-yellow-500/10",
   Judge: "border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-teal-500/10",
 };
 
@@ -56,11 +56,10 @@ export function CaseReplay({ data }: Props) {
             <div className="flex justify-between items-center mb-2">
               <span className="font-mono text-sm text-white/90">{r.model_key}</span>
               <span
-                className={`text-sm font-medium px-3 py-1 rounded-full ${
-                  r.passed
+                className={`text-sm font-medium px-3 py-1 rounded-full ${r.passed
                     ? "bg-green-500/20 text-green-300 border border-green-500/30"
                     : "bg-red-500/20 text-red-300 border border-red-500/30"
-                }`}
+                  }`}
               >
                 {r.score}/100 {r.passed ? "PASS" : "FAIL"}
               </span>

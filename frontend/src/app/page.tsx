@@ -1,9 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import {
-  ArrowUpRight, Swords
-} from "lucide-react";
+import { Swords } from "lucide-react";
 
 const Earth3D = dynamic(() => import("@/components/Earth3D"), { ssr: false });
 const StartDashboard = dynamic(() => import("@/components/StartDashboard"), { ssr: false });
@@ -31,20 +29,25 @@ export default function Home() {
 
               {/* Left overlay cards */}
               <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 max-w-[280px] sm:max-w-[320px] flex flex-col gap-3">
+                {/* Agentic Arena Card */}
+                <div className="glass-card p-4 sm:p-6 flex flex-col gap-2 sm:gap-3 backdrop-blur-xl border-primary/20 bg-background/30">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="p-1.5 sm:p-2 rounded-full bg-primary/20 text-primary animate-pulse">
+                      <Swords className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </div>
+                    <span className="text-xs sm:text-sm font-semibold text-foreground tracking-wide">Agentic Arena</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                    Multi-model agentic debate platform. Pick a dataset, select LLM models, and watch <span className="text-foreground font-medium">Orthodox</span>, <span className="text-foreground font-medium">Heretic</span>, <span className="text-foreground font-medium">Skeptic</span> &amp; <span className="text-foreground font-medium">Judge</span> agents duke it out live.
+                  </p>
+                </div>
+
                 {/* Galileo Tribute Card */}
                 <div className="hidden sm:block select-none text-right">
                   <div className="glass-card p-5 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-end gap-3 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
-                    <a
-                      href="/datasets"
-                      className="relative flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold tracking-wide text-slate-200 transition-all duration-300 hover:bg-white/10 hover:border-cyan-400/30 hover:shadow-[0_0_24px_rgba(56,189,248,0.15)] focus:outline-none focus:ring-2 focus:ring-cyan-400/40 z-10 backdrop-blur-sm"
-                    >
-                      <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">Get Started</span>
-                      <ArrowUpRight className="w-4 h-4 text-cyan-400 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                    </a>
 
-                    <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent z-10"></div>
 
                     <p className="text-sm text-slate-300 font-serif leading-relaxed text-right z-10">
                       Galilaeus pro Copernico stetit. Pressus ab <span className="text-cyan-300 font-semibold drop-shadow-[0_0_8px_rgba(103,232,249,0.3)]">orthodoxis</span> et <span className="text-cyan-300 font-semibold drop-shadow-[0_0_8px_rgba(103,232,249,0.3)]">scepticis</span>, voce cessit—non mente. Scientia tamen perseverat.
@@ -57,19 +60,6 @@ export default function Home() {
                       </span>
                     </div>
                   </div>
-                </div>
-
-                {/* Agentic Arena Card */}
-                <div className="glass-card p-4 sm:p-6 flex flex-col gap-2 sm:gap-3 backdrop-blur-xl border-primary/20 bg-background/30">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-1.5 sm:p-2 rounded-full bg-primary/20 text-primary animate-pulse">
-                      <Swords className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </div>
-                    <span className="text-xs sm:text-sm font-semibold text-foreground tracking-wide">Agentic Arena</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                    Multi-model agentic debate platform. Pick a dataset, select LLM models, and watch <span className="text-foreground font-medium">Orthodox</span>, <span className="text-foreground font-medium">Heretic</span>, <span className="text-foreground font-medium">Skeptic</span> & <span className="text-foreground font-medium">Judge</span> agents duke it out live.
-                  </p>
                 </div>
               </div>
             </div>

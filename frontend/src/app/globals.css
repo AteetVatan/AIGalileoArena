@@ -4,62 +4,62 @@
 
 @layer base {
   :root {
-    /* Background Colors */
-    --background: 220 25% 8%;
+    /* Background — deep observatory navy */
+    --background: 222 30% 6%;
     --foreground: 210 40% 96%;
 
-    /* Card Colors */
-    --card: 220 25% 11%;
+    /* Card — barely lifted above background */
+    --card: 224 28% 9%;
     --card-foreground: 210 40% 96%;
 
-    /* Popover Colors */
-    --popover: 220 25% 11%;
+    /* Popover */
+    --popover: 224 28% 9%;
     --popover-foreground: 210 40% 96%;
 
-    /* Primary - Vibrant Electric Blue */
+    /* Primary — electric blue */
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary */
-    --secondary: 220 20% 14%;
+    --secondary: 224 22% 12%;
     --secondary-foreground: 210 40% 90%;
 
     /* Muted */
-    --muted: 220 20% 14%;
-    --muted-foreground: 215 20% 50%;
+    --muted: 224 22% 12%;
+    --muted-foreground: 218 18% 46%;
 
-    /* Accent - Same as Primary */
-    --accent: 217 91% 60%;
+    /* Accent — warm amber-gold */
+    --accent: 35 90% 55%;
     --accent-foreground: 0 0% 100%;
 
-    /* Destructive - Red */
+    /* Destructive */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     /* Border & Input */
-    --border: 220 15% 16%;
-    --input: 220 15% 16%;
+    --border: 224 16% 14%;
+    --input: 224 16% 14%;
     --ring: 217 91% 60%;
 
-    /* Border Radius */
+    /* Radius */
     --radius: 1rem;
 
-    /* Glass Effect */
-    --glass: 220 25% 12%;
-    --glass-border: 220 15% 20%;
+    /* Glass */
+    --glass: 224 26% 10%;
+    --glass-border: 224 18% 15%;
 
-    /* Status Colors */
+    /* Status */
     --success: 142 71% 45%;
     --warning: 38 92% 50%;
 
-    /* Sidebar Colors */
-    --sidebar-background: 220 30% 6%;
-    --sidebar-foreground: 215 20% 45%;
+    /* Sidebar */
+    --sidebar-background: 224 32% 5%;
+    --sidebar-foreground: 218 18% 46%;
     --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 12%;
+    --sidebar-accent: 224 22% 10%;
     --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 220 15% 10%;
+    --sidebar-border: 224 18% 9%;
     --sidebar-ring: 217 91% 60%;
   }
 }
@@ -75,30 +75,30 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-outfit), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   }
 }
 
 @layer components {
 
-  /* Glass Card - Primary glass effect */
+  /* Glass Card */
   .glass-card {
     @apply rounded-xl border bg-card/60 backdrop-blur-xl;
     border-color: hsl(var(--glass-border));
   }
 
-  /* Blue Glow Effect */
+  /* Soft Glow */
   .glow-blue {
-    box-shadow: 0 0 20px hsl(217 91% 60% / 0.15), 0 0 60px hsl(217 91% 60% / 0.05);
+    box-shadow: 0 0 10px hsl(217 91% 60% / 0.06), 0 0 30px hsl(217 91% 60% / 0.02);
   }
 
-  /* Glass Panel - Alternative glass style */
+  /* Glass Panel */
   .glass-panel {
-    background: hsl(var(--glass) / 0.6);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: hsl(var(--glass) / 0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid hsl(var(--glass-border));
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
   }
 
   /* Glass Button */
@@ -110,20 +110,20 @@
   }
 
   .glass-button:hover {
-    background: hsl(var(--glass) / 0.8);
-    transform: translateY(-2px);
-    box-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+    background: hsl(var(--glass) / 0.7);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 
-  /* Card Glow - Hoverable card with glow */
+  /* Card Glow */
   .card-glow {
     @apply glass-panel rounded-3xl p-5;
     transition: all 0.3s ease;
   }
 
   .card-glow:hover {
-    background: hsl(var(--glass) / 0.8);
-    transform: scale(1.02);
+    background: hsl(var(--glass) / 0.7);
+    transform: scale(1.01);
   }
 
   /* Hide Scrollbar */
@@ -136,7 +136,7 @@
     display: none;
   }
 
-  /* Mobile-specific utilities */
+  /* Mobile utilities */
   .mobile-padding {
     @apply px-4 sm:px-6 lg:px-8;
   }
@@ -145,14 +145,32 @@
     @apply text-sm sm:text-base;
   }
 
-  /* Touch-friendly tap targets - minimum 44x44px */
   .tap-target {
     @apply min-h-[44px] min-w-[44px];
   }
 
-  /* Responsive container with max-width */
   .container-responsive {
     @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Typography hierarchy */
+  .text-display {
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .text-data {
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    opacity: 0.88;
+  }
+
+  .text-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: hsl(var(--muted-foreground));
+    font-weight: 600;
   }
 }
 

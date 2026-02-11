@@ -27,6 +27,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
 export const ROLE_COLORS: Record<string, string> = {
   Orthodox: "text-cyan-300",
   Heretic: "text-pink-300",
-  Skeptic: "text-purple-300",
+  Skeptic: "text-amber-300",
   Judge: "text-emerald-300",
 };

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import random
 import uuid
@@ -50,6 +51,7 @@ class RunEvalUsecase:
         self._session = session
         self._repo = Repository(session)
         self._bus = event_bus
+        self._db_lock = asyncio.Lock()
 
     async def execute(
         self, *,
@@ -141,10 +143,14 @@ class RunEvalUsecase:
 
         except Exception as exc:
             logger.exception("Run %s failed", run_id)
-            await self._repo.update_run_status(
-                run_id, status=RunStatus.FAILED, finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
-            )
-            await self._repo.commit()
+            try:
+                await self._safe_rollback(run_id)
+                await self._repo.update_run_status(
+                    run_id, status=RunStatus.FAILED, finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                )
+                await self._repo.commit()
+            except Exception:
+                logger.warning("failed to set run %s to FAILED status", run_id)
             await self._emit(run_id, EventType.RUN_FINISHED, {
                 "run_id": run_id, "error": str(exc),
             })
@@ -188,17 +194,18 @@ class RunEvalUsecase:
                 controller = DebateController(llm, model_key)
 
             async def on_msg(evt: MessageEvent) -> None:
-                await self._repo.add_message(
-                    run_id=run_id, case_id=evt.case_id,
-                    model_key=model_key, role=evt.role,
-                    content=evt.content, phase=evt.phase, round=evt.round,
-                )
-                await self._repo.commit()
-                await self._emit(run_id, EventType.AGENT_MESSAGE, {
-                    "case_id": evt.case_id, "model_key": model_key,
-                    "role": evt.role, "phase": evt.phase,
-                    "round": evt.round, "content": evt.content[:2000],
-                })
+                async with self._db_lock:
+                    await self._repo.add_message(
+                        run_id=run_id, case_id=evt.case_id,
+                        model_key=model_key, role=evt.role,
+                        content=evt.content, phase=evt.phase, round=evt.round,
+                    )
+                    await self._repo.commit()
+                    await self._emit(run_id, EventType.AGENT_MESSAGE, {
+                        "case_id": evt.case_id, "model_key": model_key,
+                        "role": evt.role, "phase": evt.phase,
+                        "round": evt.round, "content": evt.content[:2000],
+                    })
 
             async def on_phase(evt: PhaseEvent) -> None:
                 await self._emit(run_id, EventType.CASE_PHASE_STARTED, {
@@ -295,14 +302,18 @@ class RunEvalUsecase:
         except QuotaExhaustedError as qe:
             user_msg = random.choice(QUOTA_EXHAUSTED_MESSAGES).format(provider=qe.provider.capitalize())
             logger.warning("Quota exhausted for %s on case %s: %s", model_key, case_row.case_id, qe)
-            await self._repo.add_result(
-                run_id=run_id, case_id=case_row.case_id, model_key=model_key,
-                verdict=VerdictEnum.INSUFFICIENT.value, label=case_row.label,
-                passed=False, score=0, confidence=0.0,
-                evidence_used_json=[], critical_fail_reason=user_msg,
-                latency_ms=0, cost_estimate=0.0, judge_json={},
-            )
-            await self._repo.commit()
+            try:
+                await self._safe_rollback(run_id)
+                await self._repo.add_result(
+                    run_id=run_id, case_id=case_row.case_id, model_key=model_key,
+                    verdict=VerdictEnum.INSUFFICIENT.value, label=case_row.label,
+                    passed=False, score=0, confidence=0.0,
+                    evidence_used_json=[], critical_fail_reason=user_msg,
+                    latency_ms=0, cost_estimate=0.0, judge_json={},
+                )
+                await self._repo.commit()
+            except Exception:
+                logger.warning("failed to persist quota-exhausted result for case %s model %s", case_row.case_id, model_key)
             await self._emit(run_id, EventType.QUOTA_EXHAUSTED, {
                 "model_key": model_key, "provider": qe.provider, "message": user_msg,
             })
@@ -310,23 +321,36 @@ class RunEvalUsecase:
 
         except Exception as exc:
             logger.error("case %s model %s blew up: %s", case_row.case_id, model_key, exc)
-            # store a dummy result so the run can continue even if one case blows up
-            await self._repo.add_result(
-                run_id=run_id, case_id=case_row.case_id, model_key=model_key,
-                verdict=VerdictEnum.INSUFFICIENT.value, label=case_row.label,
-                passed=False, score=0, confidence=0.0,
-                evidence_used_json=[], critical_fail_reason=str(exc),
-                latency_ms=0, cost_estimate=0.0, judge_json={},
-            )
-            await self._repo.commit()
+            try:
+                await self._safe_rollback(run_id)
+                await self._repo.add_result(
+                    run_id=run_id, case_id=case_row.case_id, model_key=model_key,
+                    verdict=VerdictEnum.INSUFFICIENT.value, label=case_row.label,
+                    passed=False, score=0, confidence=0.0,
+                    evidence_used_json=[], critical_fail_reason=str(exc),
+                    latency_ms=0, cost_estimate=0.0, judge_json={},
+                )
+                await self._repo.commit()
+            except Exception:
+                logger.warning("failed to persist error result for case %s model %s", case_row.case_id, model_key)
 
         finally:
-            await self._repo.upsert_case_status(
-                run_id=run_id, case_id=case_row.case_id,
-                model_key=model_key, status=CaseStatus.COMPLETED,
-                finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
-            )
-            await self._repo.commit()
+            try:
+                await self._safe_rollback(run_id)
+                await self._repo.upsert_case_status(
+                    run_id=run_id, case_id=case_row.case_id,
+                    model_key=model_key, status=CaseStatus.COMPLETED,
+                    finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                )
+                await self._repo.commit()
+            except Exception:
+                logger.warning("failed to persist case completion for case %s model %s", case_row.case_id, model_key)
+
+    async def _safe_rollback(self, run_id: str) -> None:
+        try:
+            await self._session.rollback()
+        except Exception:
+            logger.warning("rollback failed (session corrupted): run_id=%s", run_id)
 
     async def _emit(self, run_id: str, event_type: str, payload: dict) -> None:
         await emit_and_persist(self._bus, self._repo, run_id, event_type, payload)
