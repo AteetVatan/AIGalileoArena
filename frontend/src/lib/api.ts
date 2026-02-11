@@ -17,6 +17,13 @@ import {
 } from "./schemas";
 import type { CaseReplayData } from "./eventTypes";
 
+export interface DebateConfig {
+  debug_mode: boolean;
+  allowed_models: string[];
+  daily_cap: number;
+  usage_today: Record<string, number>;
+}
+
 async function fetchJSON<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`);
   if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
@@ -103,6 +110,10 @@ export const api = {
       }
       return {};
     }
+  },
+
+  async getDebateConfig(): Promise<DebateConfig> {
+    return fetchJSON<DebateConfig>("/models/debate-config");
   },
 
   eventsUrl(runId: string): string {

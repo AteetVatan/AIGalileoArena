@@ -18,6 +18,7 @@ from .preflight import (
     preflight_mistral,
     preflight_openai,
 )
+from .preflight_constants import API_KEY_ENV_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ CACHE_TTL_SECONDS = 7200  # 2 hours
 _validation_cache: dict[str, tuple[KeyValidationResult, datetime]] = {}
 
 
-_PROVIDER_NAMES = ("openai", "anthropic", "mistral", "deepseek", "gemini", "grok")
+_PROVIDER_NAMES = tuple(API_KEY_ENV_NAMES.keys())
 _MIN_KEY_LENGTH = 10
 _INVALID_VALUES = frozenset(("no", "false", "none", "", "n/a", "na", "not set", "unset"))
 
@@ -41,8 +42,7 @@ _INVALID_VALUES = frozenset(("no", "false", "none", "", "n/a", "na", "not set", 
 def _get_available_keys() -> dict[str, str]:
     """Get all configured API keys via settings.get_api_key()."""
     available: dict[str, str] = {}
-    for provider in _PROVIDER_NAMES:
-        env_name = f"{provider.upper()}_API_KEY"
+    for provider, env_name in API_KEY_ENV_NAMES.items():
         key_value = settings.get_api_key(provider)
         if not key_value or not isinstance(key_value, str):
             continue

@@ -11,6 +11,16 @@ _BACKEND_ROOT = Path(__file__).parent.parent
 _ENV_FILE = _BACKEND_ROOT / ".env"
 
 
+# Debate-mode defaults (prod)
+DEFAULT_DEBATE_ENABLED_MODELS = "mistral/mistral-large-latest,deepseek/deepseek-chat"
+DEFAULT_DEBATE_DAILY_CAP = 3
+DEFAULT_EVAL_SCHEDULER_CRON_DAY = 1
+DEFAULT_EVAL_SCHEDULER_CRON_HOUR = 2
+DEFAULT_EVAL_SCHEDULER_DATASETS = 6
+DEFAULT_EVAL_SCHEDULER_CASES = 1
+DEFAULT_TIMEZONE = "Europe/Berlin"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
@@ -20,6 +30,14 @@ class Settings(BaseSettings):
 
     database_url: str = Field(
         default="postgresql+asyncpg://galileo:galileo_pass@localhost:5432/galileo_arena",
+    )
+    database_url_migrations: str = Field(
+        default="",
+        description="Separate connection string for Alembic migrations (postgres role). Falls back to database_url if empty.",
+    )
+    database_require_ssl: bool = Field(
+        default=False,
+        description="Require SSL for database connections (enable for Supabase / cloud-hosted Postgres)",
     )
     openai_api_key: Optional[str] = Field(
         default=None,
@@ -135,9 +153,60 @@ class Settings(BaseSettings):
     def log_level_int(self) -> int:
         return self._LOG_LEVEL_MAP.get(self.log_level.upper(), logging.INFO)
 
+    # --- environment mode ---
+    debug: bool = Field(
+        default=True,
+        description="Debug mode: all models enabled, no daily caps, no scheduler restrictions",
+    )
+
     @property
     def debug_mode(self) -> bool:
-        return self.log_level.upper() == "DEBUG"
+        return self.debug
+
+    # --- debate mode (prod) ---
+    debate_daily_cap: int = Field(
+        default=DEFAULT_DEBATE_DAILY_CAP,
+        ge=1,
+        description="Max debate calls per model per calendar day (prod only)",
+    )
+    debate_enabled_models: str = Field(
+        default=DEFAULT_DEBATE_ENABLED_MODELS,
+        description="Comma-separated provider/model_name pairs allowed in debate mode (prod only)",
+    )
+    app_timezone: str = Field(
+        default=DEFAULT_TIMEZONE,
+        description="Timezone for daily cap resets and scheduler triggers",
+    )
+
+    @property
+    def debate_enabled_model_keys(self) -> list[str]:
+        return [m.strip() for m in self.debate_enabled_models.split(",") if m.strip()]
+
+    # --- monthly eval scheduler (prod) ---
+    eval_scheduler_enabled: bool = Field(
+        default=False,
+        description="Enable monthly evaluation scheduler (prod only, ignored in debug)",
+    )
+    eval_scheduler_cron_day: int = Field(
+        default=DEFAULT_EVAL_SCHEDULER_CRON_DAY,
+        ge=1, le=28,
+        description="Day of month for scheduled eval (1-28)",
+    )
+    eval_scheduler_cron_hour: int = Field(
+        default=DEFAULT_EVAL_SCHEDULER_CRON_HOUR,
+        ge=0, le=23,
+        description="Hour (in app_timezone) for scheduled eval",
+    )
+    eval_scheduler_datasets: int = Field(
+        default=DEFAULT_EVAL_SCHEDULER_DATASETS,
+        ge=1,
+        description="Number of datasets to evaluate per scheduled run",
+    )
+    eval_scheduler_cases: int = Field(
+        default=DEFAULT_EVAL_SCHEDULER_CASES,
+        ge=1,
+        description="Random cases per dataset per scheduled run",
+    )
 
     def get_api_key(self, provider: str) -> str | None:
         """Explicit provider → key mapping. No getattr."""

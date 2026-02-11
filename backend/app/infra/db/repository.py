@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from sqlalchemy import and_, delete, desc, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -17,6 +18,7 @@ from .models import (
     CachedResultSetRow,
     DatasetCaseRow,
     DatasetRow,
+    DebateUsageRow,
     RunCaseStatusRow,
     RunEventRow,
     RunMessageRow,
@@ -468,6 +470,52 @@ class Repository:
         stmt = select(RunResultRow).where(RunResultRow.run_id == run_id).order_by(RunResultRow.id)
         result = await self._s.execute(stmt)
         return list(result.scalars().all())
+
+    # --- debate usage tracking ---
+
+    async def get_debate_usage_today(
+        self, model_key: str, *, today: date,
+    ) -> int:
+        stmt = select(DebateUsageRow.call_count).where(
+            and_(DebateUsageRow.model_key == model_key, DebateUsageRow.usage_date == today),
+        )
+        result = await self._s.execute(stmt)
+        return result.scalar_one_or_none() or 0
+
+    async def increment_debate_usage(
+        self, model_key: str, *, today: date,
+    ) -> int:
+        """Atomic upsert: INSERT ... ON CONFLICT DO UPDATE SET call_count = call_count + 1."""
+        stmt = (
+            pg_insert(DebateUsageRow)
+            .values(model_key=model_key, usage_date=today, call_count=1)
+            .on_conflict_do_update(
+                constraint="uq_debate_usage_model_date",
+                set_={"call_count": DebateUsageRow.call_count + 1},
+            )
+            .returning(DebateUsageRow.call_count)
+        )
+        result = await self._s.execute(stmt)
+        await self._s.flush()
+        return result.scalar_one()
+
+    async def check_and_increment_debate_usage(
+        self, model_key: str, *, today: date, cap: int,
+    ) -> tuple[bool, int]:
+        """Atomically increment usage and check cap.
+
+        Returns (allowed, new_count). If new_count > cap after increment,
+        the increment is still committed — caller should rollback if needed.
+        """
+        new_count = await self.increment_debate_usage(model_key, today=today)
+        return new_count <= cap, new_count
+
+    async def get_all_debate_usage_today(
+        self, *, today: date,
+    ) -> dict[str, int]:
+        stmt = select(DebateUsageRow).where(DebateUsageRow.usage_date == today)
+        result = await self._s.execute(stmt)
+        return {r.model_key: r.call_count for r in result.scalars().all()}
 
     async def commit(self) -> None:
         await self._s.commit()

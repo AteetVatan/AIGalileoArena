@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 
@@ -12,6 +12,7 @@ def _utcnow() -> datetime:
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -330,3 +331,18 @@ class GalileoEvalPayloadRow(Base):
     eval_run: Mapped["GalileoEvalRunRow"] = relationship(
         back_populates="payload",
     )
+
+
+class DebateUsageRow(Base):
+    __tablename__ = "debate_usage"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    model_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    usage_date: Mapped[date] = mapped_column(Date, nullable=False)
+    call_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        UniqueConstraint("model_key", "usage_date", name="uq_debate_usage_model_date"),
+        Index("ix_debate_usage_model_date", "model_key", "usage_date"),
+    )
+

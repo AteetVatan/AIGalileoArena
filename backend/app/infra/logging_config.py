@@ -65,11 +65,20 @@ class ShortPathFormatter(logging.Formatter):
         original_name = record.name
         record.name = self._shorten_logger_name(record.name)
         try:
-            message = super().format(record)
+            message = self._safe_format(record)
             message = self._shorten(message)
         finally:
             record.name = original_name
         return message
+
+    def _safe_format(self, record: logging.LogRecord) -> str:
+        """Format with fallback for mismatched %-style args (e.g. OpenAI SDK)."""
+        try:
+            return super().format(record)
+        except TypeError:
+            record.msg = f"{record.msg} {record.args}"
+            record.args = None
+            return super().format(record)
 
     def formatException(self, ei) -> str:
         import traceback

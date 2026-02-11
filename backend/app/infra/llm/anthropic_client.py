@@ -10,7 +10,8 @@ import anthropic
 
 from .base import LLMResponse
 from .costs import ANTHROPIC_CLAUDE_35_SONNET_PRICING
-from app.core.domain.exceptions import LLMClientError
+from .key_validation import is_quota_exhaustion
+from app.core.domain.exceptions import LLMClientError, QuotaExhaustedError
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,8 @@ class AnthropicClient:
                 # Never swallow cancellation — let it propagate immediately.
                 raise
             except Exception as exc:
+                if is_quota_exhaustion(exc):
+                    raise QuotaExhaustedError("anthropic", str(exc)) from exc
                 last_err = exc
                 wait = min(2 ** attempt, 8)
                 logger.warning("Anthropic attempt %d/%d failed: %s", attempt, retries, exc)

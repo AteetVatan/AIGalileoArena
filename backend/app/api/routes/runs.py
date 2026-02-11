@@ -11,15 +11,51 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
 from app.config import settings
+from app.core.domain.exceptions import DailyCapExceededError, ModelNotAllowedError
 from app.core.domain.schemas import RunRequest, RunStatus
 from app.infra.db.repository import Repository
 from app.infra.sse.event_bus import event_bus
+from app.infra.timezone_utils import get_today_in_tz
 from app.usecases.compute_summary import compute_run_summary
 from app.usecases.replay_cached import ReplayCachedUsecase
 from app.usecases.run_eval import RunEvalUsecase
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 _log = logging.getLogger(__name__)
+
+_ERR_MODEL_NOT_ALLOWED = (
+    "Model '{}' is not available in production mode. Allowed: {}"
+)
+_ERR_DAILY_CAP_REACHED = (
+    "Daily cap ({}) reached for '{}'. Resets tomorrow ({})."
+)
+
+
+async def _enforce_and_record_prod_usage(
+    repo: Repository,
+    models: list[dict],
+) -> None:
+    """Atomically validate allowlist + increment daily usage in prod mode.
+
+    Does nothing in debug mode. Raises ModelNotAllowedError or
+    DailyCapExceededError for violations.
+    """
+    if settings.debug:
+        return
+
+    allowed = settings.debate_enabled_model_keys
+    today = get_today_in_tz()
+    cap = settings.debate_daily_cap
+
+    for m in models:
+        model_key = f"{m['provider']}/{m['model_name']}"
+        if model_key not in allowed:
+            raise ModelNotAllowedError(model_key)
+        ok, _count = await repo.check_and_increment_debate_usage(
+            model_key, today=today, cap=cap,
+        )
+        if not ok:
+            raise DailyCapExceededError(model_key, cap=cap)
 
 
 async def _compute_total_cost(session: AsyncSession, run_id: str) -> float:
@@ -58,8 +94,8 @@ async def _prepare_run(
     repo: Repository,
     body: RunRequest,
 ) -> tuple[str, list[dict], Optional[str]]:
-    """Shared prep for both POST endpoints: validate dataset + case, create run
-    row, check cache.  Returns (run_id, models_dicts, source_run_id_or_none)."""
+    """Shared prep for both POST endpoints: validate dataset + case, enforce
+    prod limits, create run row, check cache."""
     ds = await repo.get_dataset(body.dataset_id)
     if ds is None:
         raise HTTPException(404, "Dataset not found")
@@ -69,6 +105,19 @@ async def _prepare_run(
         raise HTTPException(404, "Case not found in dataset")
 
     models = [m.model_dump() for m in body.models]
+
+    # prod-mode: atomic allowlist check + usage increment
+    try:
+        await _enforce_and_record_prod_usage(repo, models)
+    except ModelNotAllowedError as exc:
+        raise HTTPException(403, _ERR_MODEL_NOT_ALLOWED.format(
+            exc.model_key, ", ".join(settings.debate_enabled_model_keys),
+        )) from exc
+    except DailyCapExceededError as exc:
+        raise HTTPException(429, _ERR_DAILY_CAP_REACHED.format(
+            exc.cap, exc.model_key, settings.app_timezone,
+        )) from exc
+
     run_id = str(uuid.uuid4())
     models_json = [{"provider": m["provider"], "model_name": m["model_name"]} for m in models]
 
@@ -78,6 +127,7 @@ async def _prepare_run(
         case_id=body.case_id,
         models_json=models_json,
     )
+
     await repo.commit()
 
     source_run_id = await _try_cache_slot(repo, body.dataset_id, models, body.case_id)

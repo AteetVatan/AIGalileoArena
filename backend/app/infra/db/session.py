@@ -10,11 +10,17 @@ from sqlalchemy.ext.asyncio import (
 
 from app.config import settings
 
+_connect_args: dict[str, str] = {"ssl": "require"} if settings.database_require_ssl else {}
+
 engine = create_async_engine(
     settings.database_url,
     echo=False,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_timeout=30,
+    pool_recycle=300,
+    connect_args=_connect_args,
 )
 
 async_session_factory = async_sessionmaker(

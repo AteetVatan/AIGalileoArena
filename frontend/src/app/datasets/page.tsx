@@ -36,6 +36,8 @@ export default function DatasetsPage() {
     const {
         isModelDisabled,
         getValidationStatus,
+        getDisabledReason,
+        getModelUsageRemaining,
         keyValidation,
         validationLoading,
         refreshValidation
@@ -203,6 +205,8 @@ export default function DatasetsPage() {
                                 onSelectModel={setSelectedModel}
                                 isModelDisabled={isModelDisabled}
                                 getValidationStatus={getValidationStatus}
+                                getDisabledReason={getDisabledReason}
+                                getModelUsageRemaining={getModelUsageRemaining}
                                 validationLoading={validationLoading}
                                 onRefreshValidation={refreshValidation}
                                 keyValidation={keyValidation}

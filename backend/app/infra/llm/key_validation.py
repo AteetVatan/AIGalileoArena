@@ -104,3 +104,22 @@ def classify_error(
         return KeyValidationStatus.TIMEOUT
     else:
         return KeyValidationStatus.UNKNOWN_ERROR
+
+
+def is_quota_exhaustion(exc: Exception) -> bool:
+    """Check if an exception indicates quota/billing exhaustion (not transient rate-limit)."""
+    status = getattr(exc, "status_code", None) or getattr(exc, "status", None)
+    msg = str(exc).lower()
+
+    if status == 429 and (
+        BILLING_KEYWORDS.search(msg)
+        or "insufficient" in msg
+        or ("exceeded" in msg and ("quota" in msg or "limit" in msg))
+    ):
+        return True
+
+    if "resource_exhausted" in msg and BILLING_KEYWORDS.search(msg):
+        return True
+
+    return False
+

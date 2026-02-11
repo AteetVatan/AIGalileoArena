@@ -135,34 +135,42 @@ function PerformanceTab({ params, modelNames, summaryData, trendData }: Performa
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GlassCard title="Score Trend">
-                    {trendData?.series?.length ? (
-                        <TrendChart series={trendData.series} modelNames={modelNames} />
-                    ) : (
-                        <NeonSpinner className="h-64" />
-                    )}
+                    <div className="min-h-[300px] h-[300px]">
+                        {trendData?.series?.length ? (
+                            <TrendChart series={trendData.series} modelNames={modelNames} />
+                        ) : (
+                            <NeonSpinner className="h-64" />
+                        )}
+                    </div>
                 </GlassCard>
                 <GlassCard title="Score Distribution">
-                    {distData?.items?.length ? (
-                        <DistributionChart items={distData.items} modelNames={modelNames} />
-                    ) : (
-                        <NeonSpinner className="h-64" />
-                    )}
+                    <div className="min-h-[300px] h-[300px]">
+                        {distData?.items?.length ? (
+                            <DistributionChart items={distData.items} modelNames={modelNames} />
+                        ) : (
+                            <NeonSpinner className="h-64" />
+                        )}
+                    </div>
                 </GlassCard>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GlassCard title="Score Breakdown">
-                    {breakdownData?.items?.length ? (
-                        <ScoreBreakdownChart items={breakdownData.items} modelNames={modelNames} />
-                    ) : (
-                        <div className="text-gray-500 h-32 flex items-center justify-center">No breakdown data</div>
-                    )}
+                    <div className="min-h-[300px] h-[300px]">
+                        {breakdownData?.items?.length ? (
+                            <ScoreBreakdownChart items={breakdownData.items} modelNames={modelNames} />
+                        ) : (
+                            <div className="text-gray-500 h-full flex items-center justify-center">No breakdown data</div>
+                        )}
+                    </div>
                 </GlassCard>
                 <GlassCard title="Radar / Spider">
-                    {radarData?.entries?.length ? (
-                        <RadarChart entries={radarData.entries} modelNames={modelNames} />
-                    ) : (
-                        <div className="text-gray-500 h-32 flex items-center justify-center">No radar data</div>
-                    )}
+                    <div className="min-h-[300px] h-[300px]">
+                        {radarData?.entries?.length ? (
+                            <RadarChart entries={radarData.entries} modelNames={modelNames} />
+                        ) : (
+                            <div className="text-gray-500 h-full flex items-center justify-center">No radar data</div>
+                        )}
+                    </div>
                 </GlassCard>
             </div>
             <GlassCard title="All Models">

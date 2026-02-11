@@ -34,6 +34,14 @@ Complete step-by-step guide for **local debugging** and **production deployment*
 10. [API Verification](#10-api-verification)
 11. [Troubleshooting](#11-troubleshooting)
 12. [Galileo Analytics](#12-galileo-analytics)
+13. [LLM Access Controls](#13-llm-access-controls)
+   - 13a. Debug vs Production Mode
+   - 13b. Model Allowlist
+   - 13c. Daily Call Caps
+   - 13d. Request Flow
+   - 13e. Frontend Integration
+   - 13f. Monthly Evaluation Scheduler
+   - 13g. Configuration Reference
 
 ---
 
@@ -44,12 +52,12 @@ Complete step-by-step guide for **local debugging** and **production deployment*
 | **Python**       | >= 3.12   | Backend runtime                      |
 | **Node.js**      | >= 20 LTS | Frontend runtime                     |
 | **npm**          | >= 10     | Frontend package manager             |
-| **PostgreSQL**   | >= 16     | Primary database                     |
+| **PostgreSQL**   | >= 16     | Primary database (Supabase or local) |
 | **Docker**       | >= 24     | Containerised deployment (optional)  |
 | **Docker Compose** | >= 2.20 | Multi-container orchestration (optional) |
 | **Git**          | any       | Version control                      |
 
-> **Tip:** For local debugging without Docker you only need Python, Node.js, and a running PostgreSQL instance.
+> **Tip:** For local debugging you only need Python, Node.js, and a PostgreSQL instance (Supabase cloud or local Docker).
 >
 > **No GPU required.** The entire stack -- including ONNX ML scoring -- runs on CPU only. Production deployments do not need GPU instances.
 
@@ -118,7 +126,8 @@ copy backend\.env.example backend\.env
 
 | Variable            | Required | Default                                                                | Description                          |
 | ------------------- | -------- | ---------------------------------------------------------------------- | ------------------------------------ |
-| `DATABASE_URL`      | Yes      | `postgresql+asyncpg://galileo:galileo_pass@localhost:5432/galileo_arena` | Async SQLAlchemy connection string   |
+| `DATABASE_URL`      | Yes      | `postgresql+asyncpg://galileo:galileo_pass@localhost:5432/galileo_arena` | Async SQLAlchemy connection string (Supabase or local) |
+| `DATABASE_URL_MIGRATIONS` | No | _(empty — falls back to `DATABASE_URL`)_                               | Separate connection for Alembic migrations (use `postgres` role) |
 | `OPENAI_API_KEY`    | No*      | `None`                                                                 | OpenAI API key                       |
 | `ANTHROPIC_API_KEY` | No*      | `None`                                                                 | Anthropic API key                    |
 | `MISTRAL_API_KEY`   | No*      | `None`                                                                 | Mistral API key                      |
@@ -135,11 +144,22 @@ copy backend\.env.example backend\.env
 | `SWEEP_MAX_PARALLEL`| No       | `3`                                                                    | Max concurrent sweep evaluations     |
 | `SWEEP_MAX_COST_USD`| No       | `5.0`                                                                  | Dollar budget limit per sweep run    |
 | `SWEEP_INCLUDE_BASELINE` | No  | `true`                                                                 | Also run baseline mode during sweep  |
+| `DEBUG`             | No       | `true`                                                                 | `true` = debug mode (all models, no caps); `false` = production restrictions |
+| `DEBATE_DAILY_CAP`  | No       | `3`                                                                    | Max calls per model per day in prod  |
+| `DEBATE_ENABLED_MODELS` | No   | `mistral/mistral-large-latest,deepseek/deepseek-chat`                  | Comma-separated models allowed in prod debate mode |
+| `APP_TIMEZONE`      | No       | `Europe/Berlin`                                                        | IANA timezone for daily cap resets and scheduler |
+| `EVAL_SCHEDULER_ENABLED` | No  | `false`                                                                | Enable monthly scheduled evals (prod only) |
+| `EVAL_SCHEDULER_CRON_DAY` | No | `1`                                                                    | Day of month for scheduled eval (1-28) |
+| `EVAL_SCHEDULER_CRON_HOUR` | No | `2`                                                                   | Hour of day in APP_TIMEZONE (0-23) |
+| `EVAL_SCHEDULER_DATASETS` | No | `6`                                                                    | Random datasets per scheduled eval run |
+| `EVAL_SCHEDULER_CASES` | No    | `1`                                                                    | Random cases per dataset per eval |
 
 > **\*** At least **one** LLM provider API key is required to run evaluations.
 
 > See [ML Scoring (ONNX)](#8-ml-scoring-onnx) for the full list of ML configuration variables.
 > See [Galileo Analytics](#12-galileo-analytics) for analytics-specific configuration.
+> See [LLM Access Controls](#13-llm-access-controls) for the complete access control flow.
+> See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for the full Supabase migration guide.
 
 ### Frontend
 
@@ -155,7 +175,19 @@ The frontend reads this at build time. For local dev the default is usually corr
 
 ### 4a. Database (PostgreSQL)
 
-**Option A — Docker (recommended for local dev):**
+**Option A — Supabase (recommended):**
+
+Use Supabase's managed PostgreSQL. See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for the full setup walkthrough.
+
+In `backend/.env`, set:
+```ini
+# App runtime (app_user, Session pooler)
+DATABASE_URL=postgresql+asyncpg://app_user.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+# Migrations (postgres role, Session pooler)
+DATABASE_URL_MIGRATIONS=postgresql+asyncpg://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+```
+
+**Option B — Docker (local offline dev):**
 
 > **Tip:** Before starting, check if port 5432 is already in use:
 > - **Windows (PowerShell):** `Get-NetTCPConnection -LocalPort 5432`
@@ -185,7 +217,14 @@ docker run -d `
   postgres:16-alpine
 ```
 
-**Option B — System PostgreSQL:**
+In `backend/.env`, set:
+```ini
+DATABASE_URL=postgresql+asyncpg://galileo:galileo_pass@localhost:5432/galileo_arena
+```
+
+> **Note:** When using local PostgreSQL, comment out `connect_args={"ssl": "require"}` in `session.py` and `alembic/env.py` (SSL not needed for localhost).
+
+**Option C — System PostgreSQL:**
 
 ```sql
 -- Connect as superuser and run:
@@ -326,27 +365,19 @@ Append to `.vscode/launch.json` configurations:
 
 ### 4d. Running Everything Together (Local)
 
-Open **three terminals**:
+**With Supabase (recommended):** Open **two terminals** — no local database needed:
 
-**Linux / macOS:**
+| Terminal | Directory  | Command                                           |
+| -------- | ---------- | ------------------------------------------------- |
+| 1        | `backend/` | Activate venv + `uvicorn app.main:app --reload`   |
+| 2        | `frontend/`| `npm run dev`                                     |
+
+**With local PostgreSQL:** Open **three terminals**:
+
 | Terminal | Directory  | Command                                           |
 | -------- | ---------- | ------------------------------------------------- |
 | 1        | (root)     | `docker run ... postgres:16-alpine` (see 4a)      |
-| 2        | `backend/` | `source .venv/bin/activate && uvicorn app.main:app --reload` |
-| 3        | `frontend/`| `npm run dev`                                     |
-
-**Windows (PowerShell):**
-| Terminal | Directory  | Command                                           |
-| -------- | ---------- | ------------------------------------------------- |
-| 1        | (root)     | `docker run ... postgres:16-alpine` (see 4a)      |
-| 2        | `backend/` | `.venv\Scripts\Activate.ps1; uvicorn app.main:app --reload` |
-| 3        | `frontend/`| `npm run dev`                                     |
-
-**Windows (CMD):**
-| Terminal | Directory  | Command                                           |
-| -------- | ---------- | ------------------------------------------------- |
-| 1        | (root)     | `docker run ... postgres:16-alpine` (see 4a)      |
-| 2        | `backend/` | `.venv\Scripts\activate.bat && uvicorn app.main:app --reload` |
+| 2        | `backend/` | Activate venv + `uvicorn app.main:app --reload`   |
 | 3        | `frontend/`| `npm run dev`                                     |
 
 Then open `http://localhost:3000` in your browser.
@@ -401,11 +432,10 @@ Services started:
 
 | Service      | Port | URL                          |
 | ------------ | ---- | ---------------------------- |
-| **postgres** | 5432 | Internal to Docker network   |
 | **backend**  | 8000 | http://localhost:8000        |
 | **frontend** | 3000 | http://localhost:3000        |
 
-> **Note:** The `docker-compose.yml` mounts `./backend` as a volume for live-reload during development. The backend `DATABASE_URL` is overridden to point to the Docker-internal `postgres` hostname.
+> **Note:** The local PostgreSQL service in `docker-compose.yml` is commented out (using Supabase). Uncomment it for offline development. The backend reads `DATABASE_URL` from `backend/.env`.
 
 ---
 
@@ -440,6 +470,7 @@ Existing migrations:
 - `005_add_safe_to_answer.py` — Safe-to-answer flag on dataset cases
 - `006_add_scoring_mode.py` — Scoring mode column on runs (deterministic/ml)
 - `007_galileo_analytics.py` — Analytics tables: `llm_model`, `galileo_eval_run`, `galileo_eval_payload` + pgcrypto extension
+- `008_debate_usage.py` — `debate_usage` table for daily call-count tracking per model (unique on model_key + usage_date)
 
 **Backfill script:** After running migration 007, optionally populate the analytics ledger from existing run results:
 
@@ -916,28 +947,13 @@ docker run -d `
 
 ### 9d. Docker Compose Production
 
-Create a `docker-compose.prod.yml` override or modify environment values:
+Create a `docker-compose.prod.yml` override. The database is hosted on Supabase — no local postgres service needed:
 
 ```yaml
 # docker-compose.prod.yml
 version: "3.9"
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: galileo
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}   # use a strong password
-      POSTGRES_DB: galileo_arena
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U galileo"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: always
-
   backend:
     build: ./backend
     ports:
@@ -945,11 +961,7 @@ services:
     env_file:
       - backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://galileo:${POSTGRES_PASSWORD}@postgres:5432/galileo_arena
       LOG_LEVEL: WARNING
-    depends_on:
-      postgres:
-        condition: service_healthy
     command: >
       uvicorn app.main:app
         --host 0.0.0.0
@@ -970,10 +982,9 @@ services:
     depends_on:
       - backend
     restart: always
-
-volumes:
-  pgdata:
 ```
+
+> **Note:** `DATABASE_URL` and `DATABASE_URL_MIGRATIONS` are set in `backend/.env` pointing to Supabase. See [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
 
 **Linux / macOS:**
 ```bash
@@ -1006,7 +1017,8 @@ docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
 
 ### 9e. Cloud / VPS Deployment Checklist
 
-- [ ] **Database:** Use managed PostgreSQL (AWS RDS, GCP Cloud SQL, etc.) or secure the Docker volume with backups.
+- [ ] **Database:** Use Supabase managed PostgreSQL (recommended) or another managed provider. See [SUPABASE_SETUP.md](SUPABASE_SETUP.md). On Supabase Free tier, add off-platform nightly `pg_dump` backups. Upgrade to Pro ($25/mo) for automated daily backups + PITR.
+- [ ] **DB role:** Run the app as a dedicated `app_user` role with least privileges — never as `postgres` superuser.
 - [ ] **Secrets:** Store API keys in a secrets manager (AWS Secrets Manager, Vault, etc.) — never commit `.env` files.
 - [ ] **HTTPS:** Terminate TLS at the load balancer or Nginx reverse proxy.
 - [ ] **CORS:** Restrict `allow_origins` in `main.py` to your actual domain(s) instead of `"*"`.
@@ -1014,7 +1026,6 @@ docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
 - [ ] **Health checks:** Backend exposes `GET /health` — use it for load balancer health probes.
 - [ ] **Logging:** Set `LOG_LEVEL=WARNING`; ship logs to a centralised system (CloudWatch, Datadog, etc.).
 - [ ] **Resource limits:** Set CPU/memory limits on Docker containers.
-- [ ] **Backups:** Schedule PostgreSQL `pg_dump` or use managed backup features.
 - [ ] **Monitoring:** Track API latency, error rates, and database connection pool usage.
 - [ ] **ML scoring:** If `ML_SCORING_ENABLED=true`, ensure ONNX models are deployed (see [9b.1. ML Model Deployment](#9b1-ml-model-deployment)). No GPU instance needed -- CPU-only (`onnxruntime`, not `onnxruntime-gpu`). Budget ~200 MB extra RAM for the two INT8 models. Models are gitignored and must be exported locally before Docker build or mounted as a volume.
 
@@ -1132,6 +1143,9 @@ curl http://localhost:8000/api/galileo/distribution?window=30
 sqlalchemy.exc.OperationalError: connection refused
 ```
 
+- **Supabase:** Verify `DATABASE_URL` in `backend/.env` uses the correct Session pooler host and port (`pooler.supabase.com:5432`). Ensure `connect_args={"ssl": "require"}` is set in `session.py`.
+- **Supabase SSL error:** If you see `SSL SYSCALL error`, ensure you're using the Session pooler (not Direct) and that your network allows outbound connections on port 5432.
+- **Supabase IPv6 error:** If migrations fail in CI/CD with connection timeouts, switch from the Direct connection to the Session pooler URL (IPv4 compatible).
 - **Local:** Ensure PostgreSQL is running on port 5432.
   - **Linux / macOS:** Check with `pg_isready -h localhost`
   - **Windows:** Check with `& "C:\Program Files\PostgreSQL\16\bin\pg_isready.exe" -h localhost` (adjust path to your PostgreSQL version)
@@ -1448,3 +1462,133 @@ It features:
 - **Graceful empty states:** Informative messages when no data exists
 
 Charts use Recharts with a dark theme matching the app's design system.
+
+---
+
+## 13. LLM Access Controls
+
+The platform supports two operating modes — **debug** and **production** — controlled by the `DEBUG` environment variable. Production mode restricts which LLM models can be used and enforces daily call limits.
+
+### 13a. Debug vs Production Mode
+
+| Aspect | `DEBUG=true` (default) | `DEBUG=false` |
+|--------|----------------------|---------------|
+| Model availability | All 6 models enabled | Only `DEBATE_ENABLED_MODELS` |
+| Daily call caps | None | `DEBATE_DAILY_CAP` per model per day |
+| Monthly eval scheduler | Disabled | Active if `EVAL_SCHEDULER_ENABLED=true` |
+| Frontend model selector | All models selectable | Restricted models greyed out with reason |
+
+### 13b. Model Allowlist
+
+In production, only models listed in `DEBATE_ENABLED_MODELS` can be used for debate-mode evaluations. The value is a comma-separated list of `provider/model_name` keys:
+
+```ini
+DEBATE_ENABLED_MODELS=mistral/mistral-large-latest,deepseek/deepseek-chat
+```
+
+Any request using a non-allowed model receives **HTTP 403**.
+
+### 13c. Daily Call Caps
+
+Each allowed model is limited to `DEBATE_DAILY_CAP` calls per calendar day. The "day" boundary is defined by `APP_TIMEZONE` (defaults to `Europe/Berlin`).
+
+Usage is tracked in the `debate_usage` database table with an atomic Postgres upsert (`INSERT ... ON CONFLICT DO UPDATE SET call_count = call_count + 1`). This eliminates race conditions under concurrent requests.
+
+When the cap is reached, the backend returns **HTTP 429** with the model name and reset timezone.
+
+### 13d. Request Flow
+
+The following sequence describes what happens when a user starts a debate-mode evaluation in production:
+
+```
+┌──────────┐      ┌──────────┐      ┌──────────────┐      ┌──────────┐
+│ Frontend │      │ API      │      │ Repository   │      │ Postgres │
+│          │      │ /runs    │      │              │      │          │
+└────┬─────┘      └────┬─────┘      └──────┬───────┘      └────┬─────┘
+     │  POST /runs      │                   │                   │
+     │─────────────────►│                   │                   │
+     │                  │                   │                   │
+     │       ┌──────────┴──────────┐        │                   │
+     │       │ _enforce_and_record │        │                   │
+     │       │ _prod_usage()       │        │                   │
+     │       └──────────┬──────────┘        │                   │
+     │                  │                   │                   │
+     │                  │ 1. Check model    │                   │
+     │                  │    in allowlist    │                   │
+     │                  │    ──► 403 if not  │                   │
+     │                  │                   │                   │
+     │                  │ 2. Atomic upsert  │                   │
+     │                  │──────────────────►│                   │
+     │                  │                   │  INSERT ON        │
+     │                  │                   │  CONFLICT UPDATE  │
+     │                  │                   │──────────────────►│
+     │                  │                   │  RETURNING count  │
+     │                  │                   │◄──────────────────│
+     │                  │◄──────────────────│                   │
+     │                  │                   │                   │
+     │                  │ 3. Check count    │                   │
+     │                  │    ≤ cap           │                   │
+     │                  │    ──► 429 if over │                   │
+     │                  │                   │                   │
+     │                  │ 4. Create run     │                   │
+     │                  │──────────────────►│                   │
+     │                  │                   │──────────────────►│
+     │                  │                   │                   │
+     │  201 + run_id    │                   │                   │
+     │◄─────────────────│                   │                   │
+     │                  │                   │                   │
+```
+
+**Key design decisions:**
+
+1. **Atomic increment-then-check** — The usage counter is incremented via a single Postgres `INSERT ... ON CONFLICT DO UPDATE` before checking the cap. This eliminates the TOCTOU (time-of-check-to-time-of-use) race where concurrent requests could both pass a check-first approach.
+
+2. **Domain exceptions** — The enforcement function raises `ModelNotAllowedError` or `DailyCapExceededError` (defined in `app/core/domain/exceptions.py`). These are caught at the API boundary and translated to HTTP status codes, keeping business logic clean.
+
+3. **Server-side authority** — All restrictions are enforced server-side. The frontend disables models pre-emptively for UX, but cannot bypass the server.
+
+### 13e. Frontend Integration
+
+The frontend queries `GET /api/models/debate-config` to get:
+- `debug_mode`: whether debug mode is active
+- `allowed_models`: list of permitted model keys (empty in debug)
+- `daily_cap`: max calls per model per day (0 in debug)
+- `usage_today`: current day's usage per model (empty in debug)
+
+This data flows through:
+
+1. **`useDebateConfig()`** hook (TanStack Query) — fetches config
+2. **`useKeyValidation()`** hook — combines API key validation with debate config to provide:
+   - `isModelAllowedInMode(model)` — checks allowlist
+   - `isModelCapExhausted(model)` — checks usage vs cap
+   - `getModelUsageRemaining(model)` — remaining calls today
+   - `getDisabledReason(model)` — human-readable reason string
+3. **`ModelSelector`** component — displays remaining usage counts and greyed-out disabled models with tooltip reasons
+
+### 13f. Monthly Evaluation Scheduler
+
+When `DEBUG=false` and `EVAL_SCHEDULER_ENABLED=true`, a monthly APScheduler job runs at the configured day/hour:
+
+```ini
+EVAL_SCHEDULER_ENABLED=true
+EVAL_SCHEDULER_CRON_DAY=1        # 1st of each month
+EVAL_SCHEDULER_CRON_HOUR=2       # 02:00 in APP_TIMEZONE
+EVAL_SCHEDULER_DATASETS=6        # 6 random datasets
+EVAL_SCHEDULER_CASES=1           # 1 random case per dataset
+```
+
+The scheduler evaluates all 5 hardcoded models × N datasets × M cases. Each evaluation runs in its own database session for isolation — a failure in one evaluation doesn't affect others.
+
+### 13g. Configuration Reference
+
+| Variable | Default | Scope | Description |
+|----------|---------|-------|-------------|
+| `DEBUG` | `true` | Both | Master toggle: debug (all open) vs production (restricted) |
+| `DEBATE_DAILY_CAP` | `3` | Prod only | Max debate calls per model per calendar day |
+| `DEBATE_ENABLED_MODELS` | `mistral/mistral-large-latest,deepseek/deepseek-chat` | Prod only | Comma-separated allowed model keys |
+| `APP_TIMEZONE` | `Europe/Berlin` | Both | IANA timezone for daily resets and scheduler triggers |
+| `EVAL_SCHEDULER_ENABLED` | `false` | Prod only | Enable monthly evaluation job |
+| `EVAL_SCHEDULER_CRON_DAY` | `1` | Prod only | Day of month (1-28) for eval trigger |
+| `EVAL_SCHEDULER_CRON_HOUR` | `2` | Prod only | Hour in APP_TIMEZONE for eval trigger |
+| `EVAL_SCHEDULER_DATASETS` | `6` | Prod only | Number of random datasets per eval batch |
+| `EVAL_SCHEDULER_CASES` | `1` | Prod only | Random cases per dataset per batch |

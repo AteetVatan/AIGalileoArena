@@ -12,14 +12,16 @@ from openai import AsyncOpenAI, APIError, RateLimitError
 
 from .base import LLMResponse
 from .costs import DEFAULT_PRICING
-from app.core.domain.exceptions import LLMClientError
+from .key_validation import is_quota_exhaustion
+from .preflight_constants import PROVIDER_BASE_URLS
+from app.core.domain.exceptions import LLMClientError, QuotaExhaustedError
 
 logger = logging.getLogger(__name__)
 
 
 class OpenAICompatibleClient:
 
-    BASE_URL: str = "https://api.openai.com/v1"
+    BASE_URL: str = PROVIDER_BASE_URLS["openai"]
     PRICING: tuple[float, float] = DEFAULT_PRICING
 
     def __init__(self, *, api_key: str, model_name: str) -> None:
@@ -43,6 +45,9 @@ class OpenAICompatibleClient:
                     temperature=temperature, timeout=timeout,
                 )
             except (APIError, RateLimitError, asyncio.TimeoutError) as exc:
+                if isinstance(exc, RateLimitError) and is_quota_exhaustion(exc):
+                    provider = self.BASE_URL.split("//")[1].split(".")[0] if "//" in self.BASE_URL else "openai"
+                    raise QuotaExhaustedError(provider, str(exc)) from exc
                 last_err = exc
                 wait = min(2 ** attempt, 8)
                 logger.warning(

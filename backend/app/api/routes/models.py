@@ -1,17 +1,17 @@
-"""API routes for model configuration and availability."""
-
 from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_session
 from app.config import settings
 from app.infra.llm.key_validator import validate_all_keys
 from app.infra.llm.key_validation import KeyValidationResult, KeyValidationStatus
+from app.infra.db.repository import Repository
+from app.infra.timezone_utils import get_today_in_tz
 
 router = APIRouter(prefix="/models", tags=["models"])
 
@@ -52,6 +52,33 @@ def _serialize_validation_result(result: KeyValidationResult) -> dict:
         "request_id": result.request_id,
         "http_status": result.http_status,
         "validated_at": result.validated_at.isoformat() if result.validated_at else None,
+    }
+
+
+@router.get("/debate-config")
+async def get_debate_config(
+    session: AsyncSession = Depends(get_session),
+):
+    """Return env-mode config + daily usage so frontend can enable/disable models."""
+    is_debug = settings.debug
+
+    if is_debug:
+        return {
+            "debug_mode": True,
+            "allowed_models": [],
+            "daily_cap": 0,
+            "usage_today": {},
+        }
+
+    repo = Repository(session)
+    today = get_today_in_tz()
+    usage = await repo.get_all_debate_usage_today(today=today)
+
+    return {
+        "debug_mode": False,
+        "allowed_models": settings.debate_enabled_model_keys,
+        "daily_cap": settings.debate_daily_cap,
+        "usage_today": usage,
     }
 
 

@@ -16,6 +16,14 @@ from .key_validation import (
     KeyValidationStatus,
     classify_error,
 )
+from .preflight_constants import (
+    API_KEY_ENV_NAMES,
+    ERR_PREFLIGHT_TIMEOUT,
+    PREFLIGHT_MAX_TOKENS,
+    PREFLIGHT_MODELS,
+    PREFLIGHT_TEST_CONTENT,
+    PROVIDER_BASE_URLS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +38,11 @@ async def preflight_openai(api_key: str) -> KeyValidationResult:
     Falls back to minimal chat completion if models.list() is unavailable.
     """
     provider = "openai"
-    api_key_env = "OPENAI_API_KEY"
+    api_key_env = API_KEY_ENV_NAMES[provider]
 
     try:
-        client = AsyncOpenAI(api_key=api_key, base_url="https://api.openai.com/v1")
+        client = AsyncOpenAI(api_key=api_key, base_url=PROVIDER_BASE_URLS[provider])
 
-        # Primary: Try models.list() - lightweight, no cost
         try:
             await asyncio.wait_for(
                 client.models.list(),
@@ -48,13 +55,12 @@ async def preflight_openai(api_key: str) -> KeyValidationResult:
                 http_status=200,
             )
         except AttributeError:
-            # Fallback: models.list() not available, use minimal chat completion
             logger.debug("OpenAI models.list() not available, using chat completion fallback")
             await asyncio.wait_for(
                 client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": "test"}],
-                    max_tokens=1,
+                    model=PREFLIGHT_MODELS[provider],
+                    messages=[{"role": "user", "content": PREFLIGHT_TEST_CONTENT}],
+                    max_tokens=PREFLIGHT_MAX_TOKENS,
                 ),
                 timeout=PREFLIGHT_TIMEOUT,
             )
@@ -69,7 +75,7 @@ async def preflight_openai(api_key: str) -> KeyValidationResult:
             status=KeyValidationStatus.TIMEOUT,
             provider=provider,
             api_key_env=api_key_env,
-            error_message="Preflight request timed out",
+            error_message=ERR_PREFLIGHT_TIMEOUT,
         )
     except APIError as exc:
         status = getattr(exc, "status_code", None)
@@ -84,7 +90,6 @@ async def preflight_openai(api_key: str) -> KeyValidationResult:
             http_status=status,
         )
     except RateLimitError as exc:
-        # RateLimitError is a subclass of APIError but check separately
         status = getattr(exc, "status_code", 429)
         message = getattr(exc, "message", str(exc))
         request_id = getattr(exc, "request_id", None)
@@ -97,7 +102,6 @@ async def preflight_openai(api_key: str) -> KeyValidationResult:
             http_status=status,
         )
     except Exception as exc:
-        # Catch-all for unexpected errors
         logger.warning("Unexpected error in OpenAI preflight: %s", exc, exc_info=True)
         return KeyValidationResult(
             status=classify_error(None, str(exc)),
@@ -114,16 +118,16 @@ async def preflight_anthropic(api_key: str) -> KeyValidationResult:
     Anthropic doesn't have a free models.list endpoint.
     """
     provider = "anthropic"
-    api_key_env = "ANTHROPIC_API_KEY"
+    api_key_env = API_KEY_ENV_NAMES[provider]
 
     try:
         client = anthropic.AsyncAnthropic(api_key=api_key)
 
         await asyncio.wait_for(
             client.messages.create(
-                model="claude-3-haiku-20240307",  # Cheapest model
-                max_tokens=1,
-                messages=[{"role": "user", "content": "test"}],
+                model=PREFLIGHT_MODELS[provider],
+                max_tokens=PREFLIGHT_MAX_TOKENS,
+                messages=[{"role": "user", "content": PREFLIGHT_TEST_CONTENT}],
             ),
             timeout=PREFLIGHT_TIMEOUT,
         )
@@ -138,12 +142,12 @@ async def preflight_anthropic(api_key: str) -> KeyValidationResult:
             status=KeyValidationStatus.TIMEOUT,
             provider=provider,
             api_key_env=api_key_env,
-            error_message="Preflight request timed out",
+            error_message=ERR_PREFLIGHT_TIMEOUT,
         )
     except anthropic.APIError as exc:
         status = getattr(exc, "status_code", None)
         message = getattr(exc, "message", str(exc))
-        error_type = getattr(exc, "type", None)  # e.g., "authentication_error"
+        error_type = getattr(exc, "type", None)
         request_id = None
         if hasattr(exc, "response") and exc.response:
             request_id = exc.response.headers.get("anthropic-request-id")
@@ -171,12 +175,11 @@ async def preflight_gemini(api_key: str) -> KeyValidationResult:
     Tries models.list() if available, falls back to minimal generate_content.
     """
     provider = "gemini"
-    api_key_env = "GEMINI_API_KEY"
+    api_key_env = API_KEY_ENV_NAMES[provider]
 
     try:
         client = genai.Client(api_key=api_key)
 
-        # Try models.list() first if available
         try:
             models = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
@@ -185,7 +188,6 @@ async def preflight_gemini(api_key: str) -> KeyValidationResult:
                 ),
                 timeout=PREFLIGHT_TIMEOUT,
             )
-            # If we get here, the call succeeded
             return KeyValidationResult(
                 status=KeyValidationStatus.VALID,
                 provider=provider,
@@ -193,15 +195,14 @@ async def preflight_gemini(api_key: str) -> KeyValidationResult:
                 http_status=200,
             )
         except AttributeError:
-            # Fallback to minimal generate_content
             logger.debug("Gemini models.list() not available, using generate_content fallback")
             await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
                     None,
                     lambda: client.models.generate_content(
-                        model="gemini-2.0-flash",
-                        contents="test",
-                        config={"max_output_tokens": 1},
+                        model=PREFLIGHT_MODELS[provider],
+                        contents=PREFLIGHT_TEST_CONTENT,
+                        config={"max_output_tokens": PREFLIGHT_MAX_TOKENS},
                     ),
                 ),
                 timeout=PREFLIGHT_TIMEOUT,
@@ -217,10 +218,9 @@ async def preflight_gemini(api_key: str) -> KeyValidationResult:
             status=KeyValidationStatus.TIMEOUT,
             provider=provider,
             api_key_env=api_key_env,
-            error_message="Preflight request timed out",
+            error_message=ERR_PREFLIGHT_TIMEOUT,
         )
     except Exception as exc:
-        # Gemini errors vary - check common attributes
         status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
         message = str(exc)
         logger.warning("Error in Gemini preflight: %s", exc, exc_info=True)
@@ -239,12 +239,11 @@ async def preflight_mistral(api_key: str) -> KeyValidationResult:
     Tries models.list() if available, falls back to minimal chat completion.
     """
     provider = "mistral"
-    api_key_env = "MISTRAL_API_KEY"
+    api_key_env = API_KEY_ENV_NAMES[provider]
 
     try:
         client = Mistral(api_key=api_key)
 
-        # Mistral SDK may have models.list() - check first
         if hasattr(client, "models") and hasattr(client.models, "list"):
             await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
@@ -260,12 +259,11 @@ async def preflight_mistral(api_key: str) -> KeyValidationResult:
                 http_status=200,
             )
         else:
-            # Fallback to minimal chat
             await asyncio.wait_for(
                 client.chat.complete_async(
-                    model="mistral-small-latest",
-                    messages=[{"role": "user", "content": "test"}],
-                    max_tokens=1,
+                    model=PREFLIGHT_MODELS[provider],
+                    messages=[{"role": "user", "content": PREFLIGHT_TEST_CONTENT}],
+                    max_tokens=PREFLIGHT_MAX_TOKENS,
                 ),
                 timeout=PREFLIGHT_TIMEOUT,
             )
@@ -280,10 +278,9 @@ async def preflight_mistral(api_key: str) -> KeyValidationResult:
             status=KeyValidationStatus.TIMEOUT,
             provider=provider,
             api_key_env=api_key_env,
-            error_message="Preflight request timed out",
+            error_message=ERR_PREFLIGHT_TIMEOUT,
         )
     except Exception as exc:
-        # Mistral errors similar to OpenAI
         status = getattr(exc, "status_code", None)
         message = getattr(exc, "message", str(exc))
         logger.warning("Error in Mistral preflight: %s", exc, exc_info=True)
@@ -302,12 +299,11 @@ async def preflight_deepseek(api_key: str) -> KeyValidationResult:
     Uses OpenAI-compatible API, same as OpenAI preflight.
     """
     provider = "deepseek"
-    api_key_env = "DEEPSEEK_API_KEY"
+    api_key_env = API_KEY_ENV_NAMES[provider]
 
     try:
-        client = AsyncOpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+        client = AsyncOpenAI(api_key=api_key, base_url=PROVIDER_BASE_URLS[provider])
 
-        # Primary: Try models.list() - lightweight, no cost
         try:
             await asyncio.wait_for(
                 client.models.list(),
@@ -320,13 +316,12 @@ async def preflight_deepseek(api_key: str) -> KeyValidationResult:
                 http_status=200,
             )
         except AttributeError:
-            # Fallback: models.list() not available, use minimal chat completion
             logger.debug("DeepSeek models.list() not available, using chat completion fallback")
             await asyncio.wait_for(
                 client.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=[{"role": "user", "content": "test"}],
-                    max_tokens=1,
+                    model=PREFLIGHT_MODELS[provider],
+                    messages=[{"role": "user", "content": PREFLIGHT_TEST_CONTENT}],
+                    max_tokens=PREFLIGHT_MAX_TOKENS,
                 ),
                 timeout=PREFLIGHT_TIMEOUT,
             )
@@ -341,7 +336,7 @@ async def preflight_deepseek(api_key: str) -> KeyValidationResult:
             status=KeyValidationStatus.TIMEOUT,
             provider=provider,
             api_key_env=api_key_env,
-            error_message="Preflight request timed out",
+            error_message=ERR_PREFLIGHT_TIMEOUT,
         )
     except APIError as exc:
         status = getattr(exc, "status_code", None)
@@ -383,12 +378,11 @@ async def preflight_grok(api_key: str) -> KeyValidationResult:
     Uses OpenAI-compatible API, same as OpenAI preflight.
     """
     provider = "grok"
-    api_key_env = "GROK_API_KEY"
+    api_key_env = API_KEY_ENV_NAMES[provider]
 
     try:
-        client = AsyncOpenAI(api_key=api_key, base_url="https://api.x.ai/v1")
+        client = AsyncOpenAI(api_key=api_key, base_url=PROVIDER_BASE_URLS[provider])
 
-        # Primary: Try models.list() - lightweight, no cost
         try:
             await asyncio.wait_for(
                 client.models.list(),
@@ -401,13 +395,12 @@ async def preflight_grok(api_key: str) -> KeyValidationResult:
                 http_status=200,
             )
         except AttributeError:
-            # Fallback: models.list() not available, use minimal chat completion
             logger.debug("Grok models.list() not available, using chat completion fallback")
             await asyncio.wait_for(
                 client.chat.completions.create(
-                    model="grok-2",
-                    messages=[{"role": "user", "content": "test"}],
-                    max_tokens=1,
+                    model=PREFLIGHT_MODELS[provider],
+                    messages=[{"role": "user", "content": PREFLIGHT_TEST_CONTENT}],
+                    max_tokens=PREFLIGHT_MAX_TOKENS,
                 ),
                 timeout=PREFLIGHT_TIMEOUT,
             )
@@ -422,7 +415,7 @@ async def preflight_grok(api_key: str) -> KeyValidationResult:
             status=KeyValidationStatus.TIMEOUT,
             provider=provider,
             api_key_env=api_key_env,
-            error_message="Preflight request timed out",
+            error_message=ERR_PREFLIGHT_TIMEOUT,
         )
     except APIError as exc:
         status = getattr(exc, "status_code", None)

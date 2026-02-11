@@ -1,5 +1,5 @@
 import { AVAILABLE_MODELS } from "@/lib/constants";
-import { AlertTriangle, CheckCircle, Info, RefreshCw, XCircle } from "lucide-react";
+import { AlertTriangle, Info, RefreshCw } from "lucide-react";
 import type { KeyValidationResult, KeyValidationStatus } from "@/lib/types";
 import { RefObject } from "react";
 
@@ -8,6 +8,8 @@ interface Props {
     onSelectModel: (model: string) => void;
     isModelDisabled: (model: (typeof AVAILABLE_MODELS)[0]) => boolean;
     getValidationStatus: (model: (typeof AVAILABLE_MODELS)[0]) => KeyValidationStatus | null;
+    getDisabledReason?: (model: (typeof AVAILABLE_MODELS)[0]) => string | null;
+    getModelUsageRemaining?: (model: (typeof AVAILABLE_MODELS)[0]) => number | null;
     validationLoading: boolean;
     onRefreshValidation: () => void;
     keyValidation: Map<string, KeyValidationResult>;
@@ -20,6 +22,8 @@ export function ModelSelector({
     onSelectModel,
     isModelDisabled,
     getValidationStatus,
+    getDisabledReason,
+    getModelUsageRemaining,
     validationLoading,
     onRefreshValidation,
     keyValidation,
@@ -64,17 +68,19 @@ export function ModelSelector({
                 >
                     <option value="" className="bg-background text-muted-foreground">-- Select an Inference Engine --</option>
                     {AVAILABLE_MODELS.map((model) => {
-                        const isDisabled = isModelDisabled(model);
-                        // We can't render complex icons inside <option>, so we stick to text.
-                        // We could show status in text if needed, e.g. " (Offline)"
+                        const disabled = isModelDisabled(model);
+                        const remaining = getModelUsageRemaining?.(model);
+                        const suffix = remaining !== null && remaining !== undefined
+                            ? ` [${remaining} left today]`
+                            : "";
                         return (
                             <option
                                 key={model.id}
                                 value={model.id}
-                                disabled={isDisabled}
+                                disabled={disabled}
                                 className="bg-background text-foreground"
                             >
-                                {model.label} ({model.provider})
+                                {model.label} ({model.provider}){suffix}
                             </option>
                         );
                     })}
@@ -82,21 +88,30 @@ export function ModelSelector({
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">▼</div>
             </div>
 
-            {/* Optional: Show selected model status below the dropdown if needed */}
             {selectedModel && (() => {
                 const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
                 if (!model) return null;
+
+                const reason = getDisabledReason?.(model);
+                if (reason) {
+                    return (
+                        <div className="mt-3 text-[10px] text-red-300 bg-red-500/10 p-2 rounded border border-red-500/20 flex items-center gap-2">
+                            <AlertTriangle className="w-3 h-3" />
+                            {reason}
+                        </div>
+                    );
+                }
+
                 const status = getValidationStatus(model);
                 if (status && status !== "VALID") {
                     const result = keyValidation.get(model.api_key_env);
-                    let errorText = result?.error_message || status;
-
+                    const errorText = result?.error_message || status;
                     return (
                         <div className="mt-3 text-[10px] text-red-300 bg-red-500/10 p-2 rounded border border-red-500/20 flex items-center gap-2">
                             <AlertTriangle className="w-3 h-3" />
                             {errorText}
                         </div>
-                    )
+                    );
                 }
                 return null;
             })()}

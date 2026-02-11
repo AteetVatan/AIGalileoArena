@@ -28,6 +28,7 @@ export default function RunDashboard() {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [scores, setScores] = useState<CaseResult[]>([]);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
+  const [quotaAlert, setQuotaAlert] = useState<string | null>(null);
   const [datasetInfo, setDatasetInfo] = useState<{ datasetId: string; caseTopic: string; claim: string } | null>(null);
   const [historicalMessagesLoaded, setHistoricalMessagesLoaded] = useState(false);
 
@@ -68,6 +69,19 @@ export default function RunDashboard() {
       case "metrics_update": {
         const p = event.payload as import("@/lib/eventTypes").MetricsUpdatePayload;
         setProgress({ completed: p.completed, total: p.total });
+        break;
+      }
+      case "quota_exhausted": {
+        const p = event.payload as import("@/lib/eventTypes").QuotaExhaustedPayload;
+        setQuotaAlert(p.message);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "system",
+            model_key: p.model_key,
+            content: p.message,
+          },
+        ]);
         break;
       }
     }
@@ -310,24 +324,32 @@ export default function RunDashboard() {
           </div>
         )}
 
+        {/* Quota Exhaustion Alert */}
+        {quotaAlert && (
+          <div className="max-w-7xl mx-auto w-full mb-6">
+            <div className="glass-panel rounded-xl p-4 border border-amber-500/30 bg-amber-500/10 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+              <div>
+                <h2 className="text-sm font-bold text-amber-400 mb-1">Quota Exhausted</h2>
+                <p className="text-sm text-amber-200/80 leading-relaxed">{quotaAlert}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Content Grid */}
         <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6 pb-12">
           <div className="lg:col-span-2 space-y-6">
             <LiveTranscript messages={messages} sseStatus={sseStatus} />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="glass-panel p-1 rounded-3xl overflow-hidden">
-                <PressureScatter results={scores} />
-              </div>
-              <div className="glass-panel p-1 rounded-3xl overflow-hidden">
-                <ConfusionMatrix results={scores} />
-              </div>
-            </div>
           </div>
 
           <div className="space-y-6">
+            <Leaderboard models={summary?.models ?? []} />
             <div className="glass-panel p-1 rounded-3xl overflow-hidden">
-              <Leaderboard models={summary?.models ?? []} />
+              <PressureScatter results={scores} />
+            </div>
+            <div className="glass-panel p-1 rounded-3xl overflow-hidden">
+              <ConfusionMatrix results={scores} />
             </div>
             <div className="glass-panel p-1 rounded-3xl overflow-hidden">
               <CalibrationChart results={scores} />

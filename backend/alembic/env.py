@@ -21,12 +21,13 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+_migrations_url = settings.database_url_migrations or settings.database_url
+
 
 def run_migrations_offline() -> None:
     """Run migrations in offline mode (emit SQL to stdout)."""
-    url = settings.database_url
     context.configure(
-        url=url,
+        url=_migrations_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -43,7 +44,10 @@ def do_run_migrations(connection) -> None:
 
 async def run_migrations_online() -> None:
     """Run migrations in online mode with async engine."""
-    connectable = create_async_engine(settings.database_url)
+    connectable = create_async_engine(
+        _migrations_url,
+        connect_args={"ssl": "require"},
+    )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
@@ -53,3 +57,4 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     asyncio.run(run_migrations_online())
+

@@ -61,6 +61,7 @@ class EventType(str, Enum):
     AGENT_MESSAGE = "agent_message"
     CASE_SCORED = "case_scored"
     METRICS_UPDATE = "metrics_update"
+    QUOTA_EXHAUSTED = "quota_exhausted"
     RUN_FINISHED = "run_finished"
 
 

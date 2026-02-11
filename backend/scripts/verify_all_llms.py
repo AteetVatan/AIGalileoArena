@@ -12,18 +12,20 @@ import time
 
 import httpx
 
+from app.infra.llm.preflight_constants import API_KEY_ENV_NAMES
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)-5s %(message)s")
 log = logging.getLogger("verify")
 
 BASE = "http://localhost:8000"
 
 MODELS = [
-    {"provider": "openai",    "model_name": "gpt-4o",                   "api_key_env": "OPENAI_API_KEY"},
-    {"provider": "anthropic", "model_name": "claude-sonnet-4-20250514",         "api_key_env": "ANTHROPIC_API_KEY"},
-    {"provider": "mistral",   "model_name": "mistral-large-latest",     "api_key_env": "MISTRAL_API_KEY"},
-    {"provider": "deepseek",  "model_name": "deepseek-chat",            "api_key_env": "DEEPSEEK_API_KEY"},
-    {"provider": "gemini",    "model_name": "gemini-2.0-flash",         "api_key_env": "GEMINI_API_KEY"},
-    {"provider": "grok",      "model_name": "grok-2",                   "api_key_env": "GROK_API_KEY"},
+    {"provider": "openai",    "model_name": "gpt-4o",                   "api_key_env": API_KEY_ENV_NAMES["openai"]},
+    {"provider": "anthropic", "model_name": "claude-sonnet-4-20250514",         "api_key_env": API_KEY_ENV_NAMES["anthropic"]},
+    {"provider": "mistral",   "model_name": "mistral-large-latest",     "api_key_env": API_KEY_ENV_NAMES["mistral"]},
+    {"provider": "deepseek",  "model_name": "deepseek-chat",            "api_key_env": API_KEY_ENV_NAMES["deepseek"]},
+    {"provider": "gemini",    "model_name": "gemini-2.0-flash",         "api_key_env": API_KEY_ENV_NAMES["gemini"]},
+    {"provider": "grok",      "model_name": "grok-3",                   "api_key_env": API_KEY_ENV_NAMES["grok"]},
 ]
 
 

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
+import random
 import uuid
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,8 +26,22 @@ from app.infra.debate.schemas import FALLBACK_JUDGE_REASONING, MessageEvent, Pha
 from app.infra.llm.factory import get_llm_client
 from app.config import settings
 from app.infra.sse.event_bus import EventBus, emit_and_persist
+from app.core.domain.exceptions import QuotaExhaustedError
 
 logger = logging.getLogger(__name__)
+
+QUOTA_EXHAUSTED_MESSAGES: Final[tuple[str, ...]] = (
+    "🪭 {provider} ran out of juice! Quota's tapped out — the meter hit zero. "
+    "Time to upgrade or wait for a refill.",
+    "🚫 {provider} just pulled the velvet rope. Daily quota exceeded — "
+    "even AIs need a budget. Try again tomorrow or upgrade your plan.",
+    "⛽ {provider} is running on empty. You've burned through today's free-tier tokens. "
+    "Top up or wait for the midnight reset.",
+    "🎰 {provider} says: 'No more spins today!' You've hit the daily request limit. "
+    "Upgrade for unlimited plays.",
+    "🧊 {provider} put your requests on ice. Quota frozen until reset. "
+    "Warm it up with a billing upgrade or wait it out.",
+)
 
 
 class RunEvalUsecase:
@@ -82,12 +97,22 @@ class RunEvalUsecase:
                 "pressure_score": case_row.pressure_score,
             })
 
+            exhausted_providers: set[str] = set()
             for model_cfg in models:
                 model_key = f"{model_cfg['provider']}/{model_cfg['model_name']}"
-                await self._run_case(
-                    run_id=run_id, case_row=case_row,
-                    model_cfg=model_cfg, model_key=model_key,
-                )
+                if model_cfg["provider"] in exhausted_providers:
+                    logger.info(
+                        "Skipping %s — provider %s quota exhausted",
+                        model_key, model_cfg["provider"],
+                    )
+                    continue
+                try:
+                    await self._run_case(
+                        run_id=run_id, case_row=case_row,
+                        model_cfg=model_cfg, model_key=model_key,
+                    )
+                except QuotaExhaustedError as qe:
+                    exhausted_providers.add(qe.provider)
 
             await self._emit(run_id, EventType.METRICS_UPDATE, {
                 "completed": 1, "total": 1,
@@ -266,6 +291,22 @@ class RunEvalUsecase:
                 "score": breakdown.total, "passed": breakdown.passed,
                 "verdict": judge_decision.verdict.value,
             })
+
+        except QuotaExhaustedError as qe:
+            user_msg = random.choice(QUOTA_EXHAUSTED_MESSAGES).format(provider=qe.provider.capitalize())
+            logger.warning("Quota exhausted for %s on case %s: %s", model_key, case_row.case_id, qe)
+            await self._repo.add_result(
+                run_id=run_id, case_id=case_row.case_id, model_key=model_key,
+                verdict=VerdictEnum.INSUFFICIENT.value, label=case_row.label,
+                passed=False, score=0, confidence=0.0,
+                evidence_used_json=[], critical_fail_reason=user_msg,
+                latency_ms=0, cost_estimate=0.0, judge_json={},
+            )
+            await self._repo.commit()
+            await self._emit(run_id, EventType.QUOTA_EXHAUSTED, {
+                "model_key": model_key, "provider": qe.provider, "message": user_msg,
+            })
+            raise
 
         except Exception as exc:
             logger.error("case %s model %s blew up: %s", case_row.case_id, model_key, exc)

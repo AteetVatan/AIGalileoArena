@@ -1,6 +1,8 @@
-"""APScheduler wrapper for the freshness sweep cron job.
+"""APScheduler wrapper for scheduled jobs.
 
-Only starts when settings.sweep_enabled is True.
+Jobs:
+- Freshness sweep (daily, when sweep_enabled)
+- Monthly eval (1st of month, prod mode only)
 """
 
 from __future__ import annotations
@@ -16,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 _scheduler: AsyncIOScheduler | None = None
 
-_JOB_ID = "galileo_freshness_sweep"
+_SWEEP_JOB_ID = "galileo_freshness_sweep"
+_EVAL_JOB_ID = "galileo_monthly_eval"
 
 
 async def _sweep_job() -> None:
@@ -31,28 +34,71 @@ async def _sweep_job() -> None:
         logger.exception("Scheduled sweep failed")
 
 
+async def _monthly_eval_job() -> None:
+    from app.infra.db.session import async_session_factory
+    from app.usecases.scheduled_eval import run_scheduled_eval
+
+    try:
+        async with async_session_factory() as session:
+            result = await run_scheduled_eval(session)
+            logger.info("Monthly eval result: %s", result)
+    except Exception:
+        logger.exception("Monthly eval job failed")
+
+
 def start_scheduler() -> None:
     global _scheduler
-    if not settings.sweep_enabled:
-        logger.info("Sweep scheduler disabled (SWEEP_ENABLED=false)")
+    has_sweep = settings.sweep_enabled
+    has_eval = settings.eval_scheduler_enabled and not settings.debug
+
+    if not has_sweep and not has_eval:
+        logger.info("All schedulers disabled")
         return
     if _scheduler is not None:
         return
 
     _scheduler = AsyncIOScheduler()
-    trigger = CronTrigger(hour=settings.sweep_cron_hour, minute=0)
-    _scheduler.add_job(
-        _sweep_job,
-        trigger=trigger,
-        id=_JOB_ID,
-        replace_existing=True,
-        max_instances=1,
-    )
+
+    if has_sweep:
+        _scheduler.add_job(
+            _sweep_job,
+            trigger=CronTrigger(hour=settings.sweep_cron_hour, minute=0),
+            id=_SWEEP_JOB_ID,
+            replace_existing=True,
+            max_instances=1,
+        )
+        logger.info(
+            "Sweep scheduler started (daily at %02d:00 UTC)",
+            settings.sweep_cron_hour,
+        )
+
+    if has_eval:
+        try:
+            from zoneinfo import ZoneInfo
+            tz = ZoneInfo(settings.app_timezone)
+        except (ImportError, KeyError):
+            from datetime import timezone
+            tz = timezone.utc
+        _scheduler.add_job(
+            _monthly_eval_job,
+            trigger=CronTrigger(
+                day=settings.eval_scheduler_cron_day,
+                hour=settings.eval_scheduler_cron_hour,
+                minute=0,
+                timezone=tz,
+            ),
+            id=_EVAL_JOB_ID,
+            replace_existing=True,
+            max_instances=1,
+        )
+        logger.info(
+            "Monthly eval scheduler started (day %d at %02d:00 %s)",
+            settings.eval_scheduler_cron_day,
+            settings.eval_scheduler_cron_hour,
+            settings.app_timezone,
+        )
+
     _scheduler.start()
-    logger.info(
-        "Sweep scheduler started (daily at %02d:00 UTC)",
-        settings.sweep_cron_hour,
-    )
 
 
 def stop_scheduler() -> None:
@@ -60,4 +106,4 @@ def stop_scheduler() -> None:
     if _scheduler is not None:
         _scheduler.shutdown(wait=False)
         _scheduler = None
-        logger.info("Sweep scheduler stopped")
+        logger.info("Scheduler stopped")

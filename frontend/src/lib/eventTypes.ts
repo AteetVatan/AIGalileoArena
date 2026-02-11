@@ -3,7 +3,8 @@ import type { Verdict } from "./types";
 export type SSEPayload =
     | AgentMessagePayload
     | CaseScoredPayload
-    | MetricsUpdatePayload;
+    | MetricsUpdatePayload
+    | QuotaExhaustedPayload;
 
 export interface AgentMessagePayload {
     event_type: 'agent_message';
@@ -29,8 +30,15 @@ export interface MetricsUpdatePayload {
     total: number;
 }
 
+export interface QuotaExhaustedPayload {
+    event_type: 'quota_exhausted';
+    model_key: string;
+    provider: string;
+    message: string;
+}
+
 export interface SSEEvent {
-    event_type: 'agent_message' | 'case_scored' | 'metrics_update';
+    event_type: 'agent_message' | 'case_scored' | 'metrics_update' | 'quota_exhausted';
     payload: SSEPayload;
 }
 

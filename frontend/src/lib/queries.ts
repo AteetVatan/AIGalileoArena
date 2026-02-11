@@ -9,6 +9,7 @@ export const queryKeys = {
     dataset: (id: string) => ["dataset", id] as const,
     availableKeys: ["availableKeys"] as const,
     keyValidation: ["keyValidation"] as const,
+    debateConfig: ["debateConfig"] as const,
     run: (id: string) => ["run", id] as const,
     runSummary: (id: string) => ["runSummary", id] as const,
     caseReplay: (runId: string, caseId: string) => ["caseReplay", runId, caseId] as const,
@@ -47,8 +48,16 @@ export function useValidateKeys(force = false) {
     return useQuery({
         queryKey: [...queryKeys.keyValidation, force],
         queryFn: () => api.validateKeys(force),
-        staleTime: force ? 0 : 5 * 60 * 1000, // Force refresh validation immediately
+        staleTime: force ? 0 : 5 * 60 * 1000,
         refetchOnWindowFocus: false,
+    });
+}
+
+export function useDebateConfig() {
+    return useQuery({
+        queryKey: queryKeys.debateConfig,
+        queryFn: () => api.getDebateConfig(),
+        staleTime: 30 * 1000,
     });
 }
 
