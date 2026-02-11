@@ -143,7 +143,7 @@ function PerformanceTab({ params, modelNames, summaryData, trendData }: Performa
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GlassCard title="Score Trend">
+                <GlassCard expandable title="Score Trend">
                     <div className="min-h-[300px] h-[300px]">
                         {trendData?.series?.length ? (
                             <TrendChart series={trendData.series} modelNames={modelNames} />
@@ -152,7 +152,7 @@ function PerformanceTab({ params, modelNames, summaryData, trendData }: Performa
                         )}
                     </div>
                 </GlassCard>
-                <GlassCard title="Score Distribution">
+                <GlassCard expandable title="Score Distribution">
                     <div className="min-h-[300px] h-[300px]">
                         {distData?.items?.length ? (
                             <DistributionChart items={distData.items} modelNames={modelNames} />
@@ -163,7 +163,7 @@ function PerformanceTab({ params, modelNames, summaryData, trendData }: Performa
                 </GlassCard>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GlassCard title="Score Breakdown">
+                <GlassCard expandable title="Score Breakdown">
                     <div className="min-h-[300px] h-[300px]">
                         {breakdownData?.items?.length ? (
                             <ScoreBreakdownChart items={breakdownData.items} modelNames={modelNames} />
@@ -172,7 +172,7 @@ function PerformanceTab({ params, modelNames, summaryData, trendData }: Performa
                         )}
                     </div>
                 </GlassCard>
-                <GlassCard title="Radar / Spider">
+                <GlassCard expandable title="Radar / Spider">
                     <div className="min-h-[300px] h-[300px]">
                         {radarData?.entries?.length ? (
                             <RadarChart entries={radarData.entries} modelNames={modelNames} />
@@ -182,7 +182,7 @@ function PerformanceTab({ params, modelNames, summaryData, trendData }: Performa
                     </div>
                 </GlassCard>
             </div>
-            <GlassCard title="All Models">
+            <GlassCard expandable title="All Models">
                 {summaryData?.models ? (
                     <ModelsTable models={summaryData.models} windowDays={params.window ?? 30} />
                 ) : (
@@ -201,14 +201,14 @@ function RobustnessTab({ params, modelNames }: TabProps) {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GlassCard title="Hallucination Rate Trend">
+                <GlassCard expandable title="Hallucination Rate Trend">
                     {hallucinationData?.series?.length ? (
                         <HallucinationTrendChart series={hallucinationData.series} modelNames={modelNames} />
                     ) : (
                         <div className="text-gray-500 h-32 flex items-center justify-center">No hallucination data</div>
                     )}
                 </GlassCard>
-                <GlassCard title="Confidence vs Correctness">
+                <GlassCard expandable title="Confidence vs Correctness">
                     {calibrationData?.points?.length ? (
                         <CalibrationScatter points={calibrationData.points} modelNames={modelNames} />
                     ) : (
@@ -216,7 +216,7 @@ function RobustnessTab({ params, modelNames }: TabProps) {
                     )}
                 </GlassCard>
             </div>
-            <GlassCard title="Score Stability (σ)">
+            <GlassCard expandable title="Score Stability (σ)">
                 {distData?.items?.length ? (
                     (() => {
                         const filtered = distData.items
@@ -258,7 +258,7 @@ function EffectivenessTab({ params, modelNames }: TabProps) {
 
     return (
         <div className="space-y-6">
-            <GlassCard title="Galileo Effect (Uplift)">
+            <GlassCard expandable title="Galileo Effect (Uplift)">
                 {upliftData?.items?.length ? (
                     <div className="space-y-4">
                         {upliftData.items
@@ -303,7 +303,7 @@ function OpsTab({ params, modelNames }: TabProps) {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GlassCard title="Score vs Latency (Pareto)">
+                <GlassCard expandable title="Score vs Latency (Pareto)">
                     {paretoData?.items?.length ? (
                         <div className="space-y-1">
                             {paretoData.items
@@ -342,7 +342,7 @@ function OpsTab({ params, modelNames }: TabProps) {
                         <div className="text-gray-500 h-32 flex items-center justify-center">No operations data</div>
                     )}
                 </GlassCard>
-                <GlassCard title="Cost per Passing Answer">
+                <GlassCard expandable title="Cost per Passing Answer">
                     {costData?.items?.length ? (
                         <CostPerPassChart items={costData.items} modelNames={modelNames} />
                     ) : (

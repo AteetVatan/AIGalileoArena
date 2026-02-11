@@ -39,6 +39,18 @@ class Settings(BaseSettings):
         default=False,
         description="Require SSL for database connections (enable for Supabase / cloud-hosted Postgres)",
     )
+    db_pool_size: int = Field(
+        default=10, ge=1, le=50,
+        description="SQLAlchemy async engine pool_size (persistent connections)",
+    )
+    db_max_overflow: int = Field(
+        default=15, ge=0, le=100,
+        description="SQLAlchemy async engine max_overflow (burst connections above pool_size)",
+    )
+    db_pool_timeout: int = Field(
+        default=30, ge=5, le=120,
+        description="Seconds to wait for a connection from the pool before timeout",
+    )
     openai_api_key: Optional[str] = Field(
         default=None,
         description="OpenAI API key from OPENAI_API_KEY env var",
@@ -186,8 +198,12 @@ class Settings(BaseSettings):
         description="Rate limit for POST /runs endpoints",
     )
     max_concurrent_runs: int = Field(
-        default=10, ge=1, le=100,
+        default=20, ge=1, le=100,
         description="Max concurrent background LLM tasks",
+    )
+    uvicorn_workers: int = Field(
+        default=4, ge=1, le=16,
+        description="Uvicorn worker count for production (UVICORN_WORKERS env var)",
     )
 
     @property
