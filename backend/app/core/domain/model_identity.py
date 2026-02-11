@@ -23,6 +23,20 @@ class ModelIdentity:
     version: str | None = None
 
 
+def _canonicalize_provider(raw: str) -> str:
+    """Strip enum class prefix from provider string.
+
+    Python 3.11+ changed str(Enum) to include the class name, e.g.
+    ``LLMProvider.OPENAI``.  When used accidentally in an f-string it
+    produces model_keys like ``LLMProvider.OPENAI/gpt-4o``.  This guard
+    extracts the value part after the last dot.
+    """
+    lowered = raw.lower()
+    if "." in lowered:
+        lowered = lowered.rsplit(".", maxsplit=1)[1]
+    return lowered
+
+
 def parse_model_key(model_key: str) -> ModelIdentity:
     """Parse 'provider/model_name' or 'provider/model_name@version'.
 
@@ -35,15 +49,17 @@ def parse_model_key(model_key: str) -> ModelIdentity:
     if not provider or not rest:
         raise InvalidModelKeyError(model_key)
 
+    canonical_provider = _canonicalize_provider(provider)
+
     if "@" in rest:
         model_name, version = rest.rsplit("@", maxsplit=1)
         return ModelIdentity(
-            provider=provider.lower(),
+            provider=canonical_provider,
             model_name=model_name,
             version=version or None,
         )
 
-    return ModelIdentity(provider=provider.lower(), model_name=rest)
+    return ModelIdentity(provider=canonical_provider, model_name=rest)
 
 
 def build_model_key(identity: ModelIdentity) -> str:

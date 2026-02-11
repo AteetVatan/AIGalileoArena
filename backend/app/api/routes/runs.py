@@ -110,7 +110,7 @@ async def _prepare_run(
     if case_row is None:
         raise HTTPException(404, "Case not found in dataset")
 
-    models = [m.model_dump() for m in body.models]
+    models = [m.model_dump(mode="json") for m in body.models]
 
     # prod-mode: atomic allowlist check + usage increment
     try:
