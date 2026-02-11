@@ -26,6 +26,7 @@
 
 .EXAMPLE
     .\deploy.ps1 -BackendUrl "https://galileo-backend.up.railway.app"
+    .\deploy.ps1 -BackendUrl "https://galileo-backend.up.railway.app" -SkipFrontend
 #>
 param(
     [string]$Registry = "ghcr.io/ateetvatan",

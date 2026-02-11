@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -19,6 +19,7 @@ import { ConfusionMatrix } from "@/components/ConfusionMatrix";
 import { CalibrationChart } from "@/components/CalibrationChart";
 import { FailGallery } from "@/components/FailGallery";
 import type { AgentMessage, CaseResult, DatasetDetail } from "@/lib/types";
+import { useNavLock } from "@/hooks/useNavLock";
 
 const Earth3D = dynamic(() => import("@/components/Earth3D"), { ssr: false });
 
@@ -31,6 +32,8 @@ export default function RunDashboard() {
   const [quotaAlert, setQuotaAlert] = useState<string | null>(null);
   const [datasetInfo, setDatasetInfo] = useState<{ datasetId: string; caseTopic: string; claim: string } | null>(null);
   const [historicalMessagesLoaded, setHistoricalMessagesLoaded] = useState(false);
+  const { lock, unlock } = useNavLock();
+  const hasLockedRef = useRef(false);
 
   const handleEvent = useCallback((event: SSEEvent) => {
     switch (event.event_type) {
@@ -88,6 +91,31 @@ export default function RunDashboard() {
   }, []);
 
   const sseStatus = useSSE(runId ? api.eventsUrl(runId) : null, handleEvent);
+
+  // Lock nav while debate is in progress, unlock on completion/error
+  useEffect(() => {
+    const isActive = run?.status === "RUNNING" || run?.status === "PENDING";
+    const isDone = run?.status === "COMPLETED" || run?.status === "FAILED";
+    const sseStuck = sseStatus === "ERROR";
+
+    if (isActive && !isDone && !sseStuck) {
+      lock();
+      hasLockedRef.current = true;
+    } else if (hasLockedRef.current) {
+      unlock();
+      hasLockedRef.current = false;
+    }
+  }, [run?.status, sseStatus, lock, unlock]);
+
+  // Cleanup: unlock if user navigates away mid-debate
+  useEffect(() => {
+    return () => {
+      if (hasLockedRef.current) {
+        unlock();
+        hasLockedRef.current = false;
+      }
+    };
+  }, [unlock]);
 
   // Reset state when runId changes
   useEffect(() => {
