@@ -79,6 +79,7 @@ class Settings(BaseSettings):
         default=False,
         description="Persist LLM results as cache slots and serve from cache when available",
     )
+    
     cache_results: int = Field(
         default=4,
         ge=1,
