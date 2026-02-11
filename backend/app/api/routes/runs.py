@@ -5,8 +5,10 @@ import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
@@ -22,6 +24,10 @@ from app.usecases.run_eval import RunEvalUsecase
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 _log = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
+_run_semaphore = asyncio.Semaphore(settings.max_concurrent_runs)
+
+_ERR_SERVER_BUSY = "Server busy — too many concurrent runs. Try again shortly."
 
 _ERR_MODEL_NOT_ALLOWED = (
     "Model '{}' is not available in production mode. Allowed: {}"
@@ -137,7 +143,9 @@ async def _prepare_run(
 # --- POST /runs ---
 
 @router.post("")
+@limiter.limit(settings.rate_limit_runs)
 async def create_run(
+    request: Request,
     body: RunRequest,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
@@ -164,19 +172,20 @@ async def create_run(
         )
 
         async def _run():
-            try:
-                async with async_session_factory() as bg_session:
-                    uc = RunEvalUsecase(bg_session, event_bus)
-                    await uc.execute(
-                        dataset_id=body.dataset_id,
-                        case_id=body.case_id,
-                        models=models,
-                        run_id=run_id,
-                    )
-                    _log.info("Background task done: run_id=%s", run_id)
-            except Exception as exc:
-                _log.exception("Background task blew up: run_id=%s error=%s", run_id, exc)
-                raise
+            async with _run_semaphore:
+                try:
+                    async with async_session_factory() as bg_session:
+                        uc = RunEvalUsecase(bg_session, event_bus)
+                        await uc.execute(
+                            dataset_id=body.dataset_id,
+                            case_id=body.case_id,
+                            models=models,
+                            run_id=run_id,
+                        )
+                        _log.info("Background task done: run_id=%s", run_id)
+                except Exception as exc:
+                    _log.exception("Background task blew up: run_id=%s error=%s", run_id, exc)
+                    raise
 
         background_tasks.add_task(_run)
 
@@ -192,7 +201,9 @@ async def create_run(
 # --- POST /runs/start ---
 
 @router.post("/start")
+@limiter.limit(settings.rate_limit_runs)
 async def start_run_sync(
+    request: Request,
     body: RunRequest,
     session: AsyncSession = Depends(get_session),
 ):

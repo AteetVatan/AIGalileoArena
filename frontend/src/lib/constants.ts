@@ -7,6 +7,8 @@ export const API_BASE = "/api";
 export const SSE_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+export const ADMIN_API_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || "";
+
 export interface AvailableModel {
   id: string;
   provider: string;

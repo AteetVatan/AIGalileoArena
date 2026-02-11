@@ -14,6 +14,7 @@ import type {
     HallucinationTrendResponse,
     CalibrationResponse,
     CostPerPassResponse,
+    DashboardResponse,
 } from "./galileoTypes";
 
 async function fetchGalileo<T>(path: string): Promise<T> {
@@ -42,6 +43,10 @@ function buildQs(params: GalileoQueryParams, extra?: Record<string, string>): st
 }
 
 export const galileoApi = {
+    async getDashboard(params: GalileoQueryParams = {}): Promise<DashboardResponse> {
+        return fetchGalileo(`/dashboard${buildQs(params)}`);
+    },
+
     async getModelsSummary(params: GalileoQueryParams = {}): Promise<ModelsSummaryResponse> {
         return fetchGalileo(`/models/summary${buildQs(params)}`);
     },

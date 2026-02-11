@@ -1,6 +1,6 @@
 /* Typed API client for the FastAPI backend. */
 
-import { API_BASE, SSE_BASE } from "./constants";
+import { API_BASE, SSE_BASE, ADMIN_API_KEY } from "./constants";
 import type {
   Dataset,
   DatasetDetail,
@@ -97,14 +97,14 @@ export const api = {
       if (force) {
         qs.set("force", "true");
       }
-      const response = await fetchJSON<AvailableKeysResponse>(
-        `/models/available-keys?${qs}`
-      );
+      const res = await fetch(`${API_BASE}/models/available-keys?${qs}`, {
+        headers: ADMIN_API_KEY ? { "X-Admin-Key": ADMIN_API_KEY } : {},
+      });
+      if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+      const response = (await res.json()) as AvailableKeysResponse;
       return response.validation || {};
     } catch (err) {
-      // Handle errors gracefully - return empty dict so validation failure doesn't break the page
       const errorMessage = err instanceof Error ? err.message : String(err);
-      // Only log non-rate-limit errors to avoid console spam
       if (!errorMessage.includes("429") && !errorMessage.includes("Rate limit")) {
         console.error("Failed to validate keys:", err);
       }

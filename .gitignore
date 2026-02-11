@@ -16,6 +16,7 @@ out/
 .vscode/
 .idea/
 .cursor/
+.agent/
 *.swp
 
 # OS
@@ -30,4 +31,5 @@ backend/models/
 
 # Misc
 *.log
+*.sql
 

@@ -176,3 +176,11 @@ class CostPerPassItem(BaseModel):
 
 class CostPerPassResponse(BaseModel):
     items: list[CostPerPassItem]
+
+
+class DashboardResponse(BaseModel):
+    summary: ModelsSummaryResponse
+    trend: TrendResponse
+    distribution: DistributionResponse
+    breakdown: ScoreBreakdownResponse
+    radar: RadarResponse

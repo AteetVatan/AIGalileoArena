@@ -164,6 +164,40 @@ class Settings(BaseSettings):
     def debug_mode(self) -> bool:
         return self.debug
 
+    # --- security ---
+    allowed_origins: str = Field(
+        default="http://localhost:3000",
+        description="Comma-separated allowed CORS origins",
+    )
+    trusted_hosts: str = Field(
+        default="localhost,127.0.0.1",
+        description="Comma-separated trusted hostnames for TrustedHostMiddleware",
+    )
+    admin_api_key: Optional[str] = Field(
+        default=None,
+        description="Secret key for admin endpoints (X-Admin-Key header)",
+    )
+    rate_limit_default: str = Field(
+        default="60/minute",
+        description="Default global rate limit (slowapi format)",
+    )
+    rate_limit_runs: str = Field(
+        default="10/minute",
+        description="Rate limit for POST /runs endpoints",
+    )
+    max_concurrent_runs: int = Field(
+        default=10, ge=1, le=100,
+        description="Max concurrent background LLM tasks",
+    )
+
+    @property
+    def allowed_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
+
+    @property
+    def trusted_hosts_list(self) -> list[str]:
+        return [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
+
     # --- debate mode (prod) ---
     debate_daily_cap: int = Field(
         default=DEFAULT_DEBATE_DAILY_CAP,

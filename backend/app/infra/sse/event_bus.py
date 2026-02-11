@@ -1,10 +1,9 @@
-"""In-memory SSE event bus with DB persistence for replay."""
-
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import time
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, AsyncGenerator
@@ -13,6 +12,9 @@ if TYPE_CHECKING:
     from app.infra.db.repository import Repository
 
 logger = logging.getLogger(__name__)
+
+MAX_SUBSCRIBERS_PER_RUN = 10
+MAX_STREAM_LIFETIME_S = 600  # 10 minutes
 
 
 class EventBus:
@@ -45,8 +47,11 @@ class EventBus:
         return seq
 
     def subscribe(self, run_id: str) -> asyncio.Queue:
+        subs = self._subscribers[run_id]
+        if len(subs) >= MAX_SUBSCRIBERS_PER_RUN:
+            raise RuntimeError(f"Too many subscribers for run {run_id}")
         queue: asyncio.Queue = asyncio.Queue(maxsize=500)
-        self._subscribers[run_id].append(queue)
+        subs.append(queue)
         return queue
 
     def unsubscribe(self, run_id: str, queue: asyncio.Queue) -> None:
@@ -54,14 +59,23 @@ class EventBus:
         if queue in subs:
             subs.remove(queue)
 
+    def cleanup_run(self, run_id: str) -> None:
+        self._subscribers.pop(run_id, None)
+        self._seq_counters.pop(run_id, None)
+
     async def stream(
         self, run_id: str, *, heartbeat_seconds: int = 15,
     ) -> AsyncGenerator[str, None]:
         queue = self.subscribe(run_id)
+        deadline = time.monotonic() + MAX_STREAM_LIFETIME_S
         try:
-            while True:
+            while time.monotonic() < deadline:
+                remaining = deadline - time.monotonic()
+                timeout = min(heartbeat_seconds, remaining)
+                if timeout <= 0:
+                    break
                 try:
-                    event = await asyncio.wait_for(queue.get(), timeout=heartbeat_seconds)
+                    event = await asyncio.wait_for(queue.get(), timeout=timeout)
                     yield f"data: {json.dumps(event)}\n\n"
                 except asyncio.TimeoutError:
                     yield ": heartbeat\n\n"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from uuid import UUID
@@ -9,11 +10,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.security import verify_admin_key
+
 from app.api.galileo_schemas import (
     CalibrationPoint,
     CalibrationResponse,
     CostPerPassItem,
     CostPerPassResponse,
+    DashboardResponse,
     DistributionItem,
     DistributionResponse,
     FailureBreakdownItem,
@@ -40,7 +44,7 @@ from app.api.galileo_schemas import (
 from app.config import settings
 from app.core.domain.schemas import INACTIVITY_THRESHOLD_DAYS
 from app.infra.db.galileo_repository import GalileoRepository
-from app.infra.db.session import get_session
+from app.infra.db.session import async_session_factory, get_session
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +52,130 @@ router = APIRouter(prefix="/galileo", tags=["galileo"])
 
 _summary_cache: dict[str, tuple[float, ModelsSummaryResponse]] = {}
 _trend_cache: dict[str, tuple[float, TrendResponse]] = {}
+_dashboard_cache: dict[str, tuple[float, DashboardResponse]] = {}
 
 
 def _cache_key(*parts: object) -> str:
     return ":".join(str(p) for p in parts)
+
+
+# --- 0. Dashboard (batched) ---
+
+async def _fetch_summary(
+    *, window: int, include_scheduled: bool,
+) -> ModelsSummaryResponse:
+    async with async_session_factory() as s:
+        repo = GalileoRepository(s)
+        rows = await repo.get_models_summary(
+            window_days=window,
+            include_scheduled=include_scheduled,
+        )
+    stale_cutoff_days = INACTIVITY_THRESHOLD_DAYS
+    models = []
+    for r in rows:
+        is_stale = False
+        if r.get("last_run_at"):
+            from datetime import datetime as dt, timedelta, timezone as tz
+            ts = r["last_run_at"]
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=tz.utc)
+            is_stale = (dt.now(tz.utc) - ts) > timedelta(days=stale_cutoff_days)
+        elif r.get("all_time_runs", 0) == 0:
+            is_stale = True
+        models.append(ModelSummaryItem(
+            llm_id=r["id"], provider=r["provider"],
+            model_name=r["model_name"], display_name=r["display_name"],
+            is_active=r["is_active"],
+            all_time_avg=float(r["all_time_avg"]) if r.get("all_time_avg") is not None else None,
+            all_time_runs=r.get("all_time_runs") or 0,
+            last_run_at=r.get("last_run_at"),
+            window_avg=float(r["window_avg"]) if r.get("window_avg") is not None else None,
+            window_runs=r.get("window_runs") or 0,
+            is_stale=is_stale,
+        ))
+    return ModelsSummaryResponse(models=models, window_days=window, include_scheduled=include_scheduled)
+
+
+async def _fetch_trend(
+    *, window: int, include_scheduled: bool,
+) -> TrendResponse:
+    async with async_session_factory() as s:
+        repo = GalileoRepository(s)
+        rows = await repo.get_models_trend(
+            window_days=window,
+            include_scheduled=include_scheduled,
+        )
+    from app.api.galileo_schemas import ModelTrendSeries
+    by_llm: dict[UUID, list[TrendBucket]] = {}
+    for r in rows:
+        lid = r["llm_id"]
+        by_llm.setdefault(lid, []).append(
+            TrendBucket(bucket=r["bucket"], score_avg=float(r["score_avg"]) if r.get("score_avg") is not None else None, n=r.get("n", 0)),
+        )
+    series = [ModelTrendSeries(llm_id=lid, buckets=b) for lid, b in by_llm.items()]
+    return TrendResponse(series=series, window_days=window)
+
+
+async def _fetch_distribution(
+    *, window: int, include_scheduled: bool,
+) -> DistributionResponse:
+    async with async_session_factory() as s:
+        repo = GalileoRepository(s)
+        rows = await repo.get_models_distribution(
+            window_days=window,
+            include_scheduled=include_scheduled,
+        )
+    return DistributionResponse(items=[DistributionItem(**r) for r in rows])
+
+
+async def _fetch_breakdown(
+    *, window: int, include_scheduled: bool,
+) -> ScoreBreakdownResponse:
+    async with async_session_factory() as s:
+        repo = GalileoRepository(s)
+        rows = await repo.get_score_breakdown(
+            window_days=window,
+            include_scheduled=include_scheduled,
+        )
+    return ScoreBreakdownResponse(items=[ScoreBreakdownItem(**r) for r in rows])
+
+
+async def _fetch_radar(
+    *, window: int, include_scheduled: bool,
+) -> RadarResponse:
+    async with async_session_factory() as s:
+        repo = GalileoRepository(s)
+        rows = await repo.get_dimensions_radar(
+            window_days=window,
+            include_scheduled=include_scheduled,
+        )
+    return RadarResponse(entries=[RadarEntry(**r) for r in rows])
+
+
+@router.get("/dashboard", response_model=DashboardResponse)
+async def get_dashboard(
+    window: int = Query(default=30, ge=1, le=365),
+    include_scheduled: bool = Query(default=False),
+) -> DashboardResponse:
+    ck = _cache_key("dashboard", window, include_scheduled)
+    cached = _dashboard_cache.get(ck)
+    if cached and time.time() - cached[0] < settings.analytics_cache_ttl_s:
+        return cached[1]
+
+    summary, trend, distribution, breakdown, radar = await asyncio.gather(
+        _fetch_summary(window=window, include_scheduled=include_scheduled),
+        _fetch_trend(window=window, include_scheduled=include_scheduled),
+        _fetch_distribution(window=window, include_scheduled=include_scheduled),
+        _fetch_breakdown(window=window, include_scheduled=include_scheduled),
+        _fetch_radar(window=window, include_scheduled=include_scheduled),
+    )
+
+    resp = DashboardResponse(
+        summary=summary, trend=trend, distribution=distribution,
+        breakdown=breakdown, radar=radar,
+    )
+    _dashboard_cache[ck] = (time.time(), resp)
+    return resp
 
 
 # --- 1. Models Summary ---
@@ -398,6 +522,7 @@ async def get_cost_per_pass(
 @router.post("/admin/run_freshness_sweep", response_model=SweepTriggerResponse)
 async def run_freshness_sweep(
     session: AsyncSession = Depends(get_session),
+    _: None = Depends(verify_admin_key),
 ) -> SweepTriggerResponse:
     from app.usecases.freshness_sweep import run_freshness_sweep
 

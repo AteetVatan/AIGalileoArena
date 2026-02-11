@@ -3,7 +3,10 @@
 import dynamic from "next/dynamic";
 import { Swords } from "lucide-react";
 
-const Earth3D = dynamic(() => import("@/components/Earth3D"), { ssr: false });
+const Earth3D = dynamic(() => import("@/components/Earth3D"), {
+  ssr: false,
+  loading: () => <div className="absolute inset-0 w-full h-full bg-background/50 animate-pulse rounded-full" />,
+});
 const StartDashboard = dynamic(() => import("@/components/StartDashboard"), { ssr: false });
 
 

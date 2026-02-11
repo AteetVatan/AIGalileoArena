@@ -1,10 +1,7 @@
 "use client";
 
 import { useMemo, Suspense, lazy } from "react";
-import {
-    useModelsSummary, useModelsTrend, useDistribution,
-    useScoreBreakdown, useRadar,
-} from "@/lib/galileoQueries";
+import { useDashboard } from "@/lib/galileoQueries";
 import type { GalileoQueryParams } from "@/lib/galileoApi";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { NeonSpinner } from "@/components/ui/NeonSpinner";
@@ -17,28 +14,24 @@ const RadarChart = lazy(() => import("@/components/analytics/RadarChart"));
 const PARAMS: GalileoQueryParams = { window: 30, includeScheduled: true };
 
 export default function StartDashboard() {
-    const { data: summaryData } = useModelsSummary(PARAMS);
-    const { data: trendData } = useModelsTrend(PARAMS);
-    const { data: distData } = useDistribution(PARAMS);
-    const { data: breakdownData } = useScoreBreakdown(PARAMS);
-    const { data: radarData } = useRadar(PARAMS);
+    const { data } = useDashboard(PARAMS);
 
     const modelNames = useMemo(() => {
         const map = new Map<string, string>();
-        if (summaryData?.models) {
-            for (const m of summaryData.models) {
+        if (data?.summary?.models) {
+            for (const m of data.summary.models) {
                 map.set(m.llm_id, m.display_name);
             }
         }
         return map;
-    }, [summaryData]);
+    }, [data?.summary]);
 
     return (
         <div className="grid grid-cols-2 grid-rows-2 gap-3 h-full">
             <GlassCard title="Score Trend" size="sm">
                 <Suspense fallback={<NeonSpinner />}>
-                    {trendData?.series?.length ? (
-                        <TrendChart series={trendData.series} modelNames={modelNames} />
+                    {data?.trend?.series?.length ? (
+                        <TrendChart series={data.trend.series} modelNames={modelNames} />
                     ) : (
                         <NeonSpinner />
                     )}
@@ -47,8 +40,8 @@ export default function StartDashboard() {
 
             <GlassCard title="Distribution" size="sm">
                 <Suspense fallback={<NeonSpinner />}>
-                    {distData?.items?.length ? (
-                        <DistributionChart items={distData.items} modelNames={modelNames} />
+                    {data?.distribution?.items?.length ? (
+                        <DistributionChart items={data.distribution.items} modelNames={modelNames} />
                     ) : (
                         <NeonSpinner />
                     )}
@@ -57,8 +50,8 @@ export default function StartDashboard() {
 
             <GlassCard title="Breakdown" size="sm">
                 <Suspense fallback={<NeonSpinner />}>
-                    {breakdownData?.items?.length ? (
-                        <ScoreBreakdownChart items={breakdownData.items} modelNames={modelNames} />
+                    {data?.breakdown?.items?.length ? (
+                        <ScoreBreakdownChart items={data.breakdown.items} modelNames={modelNames} />
                     ) : (
                         <NeonSpinner />
                     )}
@@ -67,8 +60,8 @@ export default function StartDashboard() {
 
             <GlassCard title="Radar" size="sm">
                 <Suspense fallback={<NeonSpinner />}>
-                    {radarData?.entries?.length ? (
-                        <RadarChart entries={radarData.entries} modelNames={modelNames} />
+                    {data?.radar?.entries?.length ? (
+                        <RadarChart entries={data.radar.entries} modelNames={modelNames} />
                     ) : (
                         <NeonSpinner />
                     )}

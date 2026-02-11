@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
+from app.api.security import verify_admin_key
 from app.config import settings
 from app.infra.llm.key_validator import validate_all_keys
 from app.infra.llm.key_validation import KeyValidationResult, KeyValidationStatus
@@ -84,9 +85,10 @@ async def get_debate_config(
 
 @router.get("/available-keys")
 async def get_available_keys(
-    request: Request,  # FastAPI will inject this automatically
+    request: Request,
     validate: bool = False,
     force: bool = False,
+    _: None = Depends(verify_admin_key),
 ):
     """Return a set of API key environment variable names that are configured.
 

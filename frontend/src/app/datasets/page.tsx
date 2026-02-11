@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { AVAILABLE_MODELS } from "@/lib/constants";
 import CopernicanSystem from "@/components/CopernicanSystem";
@@ -16,8 +17,10 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { useKeyValidation } from "@/hooks/useKeyValidation";
 
 export default function DatasetsPage() {
+    const router = useRouter();
     const { data: datasets = [], isLoading: datasetsLoading } = useDatasets();
     const [selected, setSelected] = useState<string>("");
+    const [navigating, setNavigating] = useState(false);
 
     const { data: datasetDetail, isLoading: casesLoading } = useDataset(selected || null);
     const cases = datasetDetail?.cases || [];
@@ -103,7 +106,8 @@ export default function DatasetsPage() {
                 mode: "debate",
             });
             if (resp.run_id) {
-                window.location.href = `/run/${resp.run_id}`;
+                setNavigating(true);
+                router.push(`/run/${resp.run_id}`);
             } else {
                 setError("No run_id in response: " + JSON.stringify(resp));
             }
@@ -115,6 +119,20 @@ export default function DatasetsPage() {
             setLaunching(false);
         }
     };
+
+    if (navigating) {
+        return (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950">
+                <div className="relative mb-8">
+                    <div className="w-20 h-20 rounded-full border-2 border-cyan-500/20" />
+                    <div className="absolute inset-0 w-20 h-20 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin" />
+                    <div className="absolute inset-3 w-14 h-14 rounded-full border-2 border-transparent border-b-teal-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+                </div>
+                <h2 className="text-2xl font-light text-white mb-2 tracking-wide">Launching Analysis</h2>
+                <p className="text-sm text-cyan-400/80 animate-pulse tracking-widest uppercase">Initializing debate sequence…</p>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-start lg:justify-center p-8 pt-20 sm:pt-8">
@@ -175,26 +193,36 @@ export default function DatasetsPage() {
                     {/* Dataset Selection - Horizontal Scroll or Grid */}
                     <div className="glass-panel border-white/10 bg-slate-950/40 backdrop-blur-md rounded-3xl p-6 shadow-2xl">
                         <h2 className="text-xs font-semibold text-cyan-400 mb-4 tracking-widest uppercase">Available Datasets</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {datasets.map((ds: Dataset) => (
-                                <button
-                                    key={ds.id}
-                                    onClick={() => handleSelectDataset(ds.id)}
-                                    className={`group relative overflow-hidden rounded-2xl p-5 text-left transition-all duration-300 border ${selected === ds.id
-                                        ? "bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/30"
-                                        : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
-                                        }`}
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 via-cyan-500/0 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <h3 className={`text-lg font-medium transition-colors ${selected === ds.id ? "text-cyan-200" : "text-white"}`}>{ds.id}</h3>
-                                    <p className="text-sm text-slate-400 mt-2 line-clamp-2 leading-relaxed">{ds.description}</p>
-                                    <div className="flex items-center gap-2 mt-4 text-xs text-white/30">
-                                        <span className="px-2 py-1 rounded-full bg-white/5">{ds.case_count} orbits</span>
-                                        <span>v{ds.version}</span>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
+                        {datasetsLoading ? (
+                            <div className="flex flex-col items-center justify-center py-16 gap-4">
+                                <div className="relative w-12 h-12">
+                                    <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20" />
+                                    <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin" />
+                                </div>
+                                <p className="text-sm text-slate-400 animate-pulse">Loading datasets…</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {datasets.map((ds: Dataset) => (
+                                    <button
+                                        key={ds.id}
+                                        onClick={() => handleSelectDataset(ds.id)}
+                                        className={`group relative overflow-hidden rounded-2xl p-5 text-left transition-all duration-300 border ${selected === ds.id
+                                            ? "bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/30"
+                                            : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
+                                            }`}
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 via-cyan-500/0 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <h3 className={`text-lg font-medium transition-colors ${selected === ds.id ? "text-cyan-200" : "text-white"}`}>{ds.id}</h3>
+                                        <p className="text-sm text-slate-400 mt-2 line-clamp-2 leading-relaxed">{ds.description}</p>
+                                        <div className="flex items-center gap-2 mt-4 text-xs text-white/30">
+                                            <span className="px-2 py-1 rounded-full bg-white/5">{ds.case_count} orbits</span>
+                                            <span>v{ds.version}</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Model Selector */}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, Rocket } from "lucide-react";
+import { ArrowUpRight, BarChart3, Info, Rocket } from "lucide-react";
 
 export function GlobalHeader() {
     return (
@@ -12,6 +12,13 @@ export function GlobalHeader() {
                     className="block text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight text-foreground mb-0 hover:text-primary transition-colors cursor-pointer w-fit tracking-tight"
                 >
                     Galileo Arena
+                </Link>
+                <Link
+                    href="/about"
+                    className="group flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm text-white/60 hover:text-cyan-300 hover:border-cyan-500/25 hover:bg-cyan-500/[0.06] transition-all duration-300"
+                >
+                    <Info className="w-3.5 h-3.5" />
+                    <span className="tracking-wide">About</span>
                 </Link>
                 <Link
                     href="/graphs"

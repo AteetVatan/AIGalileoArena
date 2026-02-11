@@ -162,3 +162,11 @@ export interface CostPerPassItem {
 export interface CostPerPassResponse {
     items: CostPerPassItem[];
 }
+
+export interface DashboardResponse {
+    summary: ModelsSummaryResponse;
+    trend: TrendResponse;
+    distribution: DistributionResponse;
+    breakdown: ScoreBreakdownResponse;
+    radar: RadarResponse;
+}

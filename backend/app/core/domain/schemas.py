@@ -158,7 +158,7 @@ class DatasetSchema(BaseModel):
 # --- model config ---
 
 class ModelConfig(BaseModel):
-    provider: str
+    provider: LLMProvider
     model_name: str
     api_key_env: str
 

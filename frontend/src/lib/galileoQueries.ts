@@ -7,6 +7,7 @@ const STALE_60S = 60 * 1000;
 const STALE_5M = 5 * 60 * 1000;
 
 export const galileoKeys = {
+    dashboard: (p: GalileoQueryParams) => ["galileo", "dashboard", p] as const,
     summary: (p: GalileoQueryParams) => ["galileo", "summary", p] as const,
     trend: (p: GalileoQueryParams) => ["galileo", "trend", p] as const,
     distribution: (p: GalileoQueryParams) => ["galileo", "distribution", p] as const,
@@ -20,6 +21,14 @@ export const galileoKeys = {
     calibration: (p: GalileoQueryParams) => ["galileo", "calibration", p] as const,
     costPerPass: (p: GalileoQueryParams) => ["galileo", "costPerPass", p] as const,
 };
+
+export function useDashboard(params: GalileoQueryParams = {}) {
+    return useQuery({
+        queryKey: galileoKeys.dashboard(params),
+        queryFn: () => galileoApi.getDashboard(params),
+        staleTime: STALE_60S,
+    });
+}
 
 export function useModelsSummary(params: GalileoQueryParams = {}) {
     return useQuery({

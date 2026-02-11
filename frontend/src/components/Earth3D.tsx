@@ -24,7 +24,7 @@ const Earth3D = () => {
         const width = containerRef.current.clientWidth || 800;
         const height = containerRef.current.clientHeight || 800;
         renderer.setSize(width, height);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         rendererRef.current = renderer;
 
@@ -53,7 +53,7 @@ const Earth3D = () => {
 
         // Mars sphere
         const textureLoader = new THREE.TextureLoader();
-        const marsGeometry = new THREE.SphereGeometry(3.2, 128, 128);
+        const marsGeometry = new THREE.SphereGeometry(3.2, 64, 64);
         const marsMaterial = new THREE.MeshStandardMaterial({
             emissive: new THREE.Color(0x401008),
             emissiveIntensity: 0.15,
@@ -62,7 +62,7 @@ const Earth3D = () => {
         });
 
         textureLoader.load(
-            "/mars-texture.jpg",
+            "/mars-texture.webp",
             (texture) => {
                 texture.colorSpace = THREE.SRGBColorSpace;
                 marsMaterial.map = texture;
@@ -133,7 +133,7 @@ const Earth3D = () => {
         scene.add(deimosOrbit);
 
         // Atmosphere
-        const atmosphereGeometry = new THREE.SphereGeometry(3.35, 64, 64);
+        const atmosphereGeometry = new THREE.SphereGeometry(3.35, 32, 32);
         const atmosphereMaterial = new THREE.MeshStandardMaterial({
             color: 0xff9966,
             transparent: true,
@@ -144,7 +144,7 @@ const Earth3D = () => {
         scene.add(atmosphere);
 
         // Outer glow
-        const glowGeometry = new THREE.SphereGeometry(3.5, 64, 64);
+        const glowGeometry = new THREE.SphereGeometry(3.5, 32, 32);
         const glowMaterial = new THREE.MeshBasicMaterial({
             color: 0xcc6644,
             transparent: true,
