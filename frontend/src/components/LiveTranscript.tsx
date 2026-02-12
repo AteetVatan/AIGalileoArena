@@ -41,35 +41,10 @@ export function LiveTranscript({ messages, sseStatus }: Props) {
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Ref to track the processed count to identify new messages
   const processedCountRef = useRef(0);
-  // Queue to hold messages waiting to be displayed
   const queueRef = useRef<AgentMessage[]>([]);
-  // Ref to track if the queue processing is active
   const isProcessingRef = useRef(false);
-
-  // Sync props to queue
-  useEffect(() => {
-    // If messages reset (new run), clear everything
-    if (messages.length === 0) {
-      setDisplayedMessages([]);
-      queueRef.current = [];
-      processedCountRef.current = 0;
-      return;
-    }
-
-    // Identify new messages
-    if (messages.length > processedCountRef.current) {
-      const newMessages = messages.slice(processedCountRef.current);
-      queueRef.current.push(...newMessages);
-      processedCountRef.current = messages.length;
-
-      // Start processing if not already active
-      if (!isProcessingRef.current) {
-        processQueue();
-      }
-    }
-  }, [messages]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const processQueue = () => {
     if (queueRef.current.length === 0) {
@@ -82,17 +57,38 @@ export function LiveTranscript({ messages, sseStatus }: Props) {
 
     if (nextMsg) {
       setDisplayedMessages((prev) => [...prev, nextMsg]);
-
-      // Determine delay
-      // If valid typing animation is desired, 500ms-800ms is good.
-      // We use 600ms as a balanced "reading" pace.
-      const delay = 600;
-
-      setTimeout(processQueue, delay);
+      timerRef.current = setTimeout(processQueue, 600);
     } else {
       isProcessingRef.current = false;
     }
   };
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      setDisplayedMessages([]);
+      queueRef.current = [];
+      processedCountRef.current = 0;
+      return;
+    }
+
+    if (messages.length > processedCountRef.current) {
+      const newMessages = messages.slice(processedCountRef.current);
+      queueRef.current.push(...newMessages);
+      processedCountRef.current = messages.length;
+
+      if (!isProcessingRef.current) {
+        processQueue();
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      queueRef.current = [];
+      isProcessingRef.current = false;
+    };
+  }, []);
 
   // Effect to highlight and scroll when a new message is displayed
   useEffect(() => {

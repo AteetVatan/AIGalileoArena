@@ -10,7 +10,12 @@ from sqlalchemy.ext.asyncio import (
 
 from app.config import settings
 
-_connect_args: dict[str, str] = {"ssl": "require"} if settings.database_require_ssl else {}
+_connect_args: dict[str, object] = {
+    "prepared_statement_cache_size": 0,
+    "statement_cache_size": 0,
+}
+if settings.database_require_ssl:
+    _connect_args["ssl"] = "require"
 
 engine = create_async_engine(
     settings.database_url,

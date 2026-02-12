@@ -12,13 +12,14 @@ import { useRunDetails } from "@/lib/queries";
 import { api } from "@/lib/api";
 import type { SSEEvent } from "@/lib/eventTypes";
 import { Leaderboard } from "@/components/Leaderboard";
+import { EvidencePanel } from "@/components/EvidencePanel";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { LiveTranscript } from "@/components/LiveTranscript";
 import { PressureScatter } from "@/components/PressureScatter";
 import { ConfusionMatrix } from "@/components/ConfusionMatrix";
 import { CalibrationChart } from "@/components/CalibrationChart";
 import { FailGallery } from "@/components/FailGallery";
-import type { AgentMessage, CaseResult, DatasetDetail } from "@/lib/types";
+import type { AgentMessage, CaseResult, DatasetDetail, Evidence } from "@/lib/types";
 import { useNavLock } from "@/hooks/useNavLock";
 
 const Earth3D = dynamic(() => import("@/components/Earth3D"), { ssr: false });
@@ -30,7 +31,7 @@ export default function RunDashboard() {
   const [scores, setScores] = useState<CaseResult[]>([]);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [quotaAlert, setQuotaAlert] = useState<string | null>(null);
-  const [datasetInfo, setDatasetInfo] = useState<{ datasetId: string; caseTopic: string; claim: string } | null>(null);
+  const [datasetInfo, setDatasetInfo] = useState<{ datasetId: string; caseTopic: string; claim: string; evidences: Evidence[] } | null>(null);
   const [historicalMessagesLoaded, setHistoricalMessagesLoaded] = useState(false);
   const { lock, unlock } = useNavLock();
   const hasLockedRef = useRef(false);
@@ -201,6 +202,7 @@ export default function RunDashboard() {
             datasetId: dataset.id,
             caseTopic: caseData.topic,
             claim: caseData.claim,
+            evidences: caseData.evidence_packets ?? [],
           });
         }
       } catch (err) {
@@ -373,6 +375,7 @@ export default function RunDashboard() {
 
           <div className="space-y-6">
             <Leaderboard models={summary?.models ?? []} />
+            <EvidencePanel evidences={datasetInfo?.evidences ?? []} />
             <div className="glass-panel p-1 rounded-3xl overflow-hidden">
               <PressureScatter results={scores} />
             </div>
