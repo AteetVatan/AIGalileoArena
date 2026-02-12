@@ -110,7 +110,7 @@ async def _prepare_run(
     if case_row is None:
         raise HTTPException(404, "Case not found in dataset")
 
-    models = [m.model_dump() for m in body.models]
+    models = [m.model_dump(mode="json") for m in body.models]
 
     # prod-mode: atomic allowlist check + usage increment
     try:
@@ -159,9 +159,12 @@ async def create_run(
         _log.info("Cache HIT: run_id=%s replaying source=%s", run_id, source_run_id)
 
         async def _replay():
-            async with async_session_factory() as bg_session:
-                uc = ReplayCachedUsecase(bg_session, event_bus, run_id=run_id, source_run_id=source_run_id)
-                await uc.execute()
+            try:
+                async with async_session_factory() as bg_session:
+                    uc = ReplayCachedUsecase(bg_session, event_bus, run_id=run_id, source_run_id=source_run_id)
+                    await uc.execute()
+            finally:
+                event_bus.cleanup_run(run_id)
 
         background_tasks.add_task(_replay)
     else:
@@ -186,6 +189,8 @@ async def create_run(
                 except Exception as exc:
                     _log.exception("Background task blew up: run_id=%s error=%s", run_id, exc)
                     raise
+                finally:
+                    event_bus.cleanup_run(run_id)
 
         background_tasks.add_task(_run)
 
@@ -216,9 +221,12 @@ async def start_run_sync(
         _log.info("Cache HIT: run_id=%s replaying source=%s", run_id, source_run_id)
 
         async def _replay():
-            async with async_session_factory() as bg_session:
-                uc = ReplayCachedUsecase(bg_session, event_bus, run_id=run_id, source_run_id=source_run_id)
-                await uc.execute()
+            try:
+                async with async_session_factory() as bg_session:
+                    uc = ReplayCachedUsecase(bg_session, event_bus, run_id=run_id, source_run_id=source_run_id)
+                    await uc.execute()
+            finally:
+                event_bus.cleanup_run(run_id)
 
         asyncio.create_task(_replay())
     else:
@@ -229,14 +237,17 @@ async def start_run_sync(
         )
 
         async def _run():
-            async with async_session_factory() as bg_session:
-                uc = RunEvalUsecase(bg_session, event_bus)
-                await uc.execute(
-                    dataset_id=body.dataset_id,
-                    case_id=body.case_id,
-                    models=models,
-                    run_id=run_id,
-                )
+            try:
+                async with async_session_factory() as bg_session:
+                    uc = RunEvalUsecase(bg_session, event_bus)
+                    await uc.execute(
+                        dataset_id=body.dataset_id,
+                        case_id=body.case_id,
+                        models=models,
+                        run_id=run_id,
+                    )
+            finally:
+                event_bus.cleanup_run(run_id)
 
         asyncio.create_task(_run())
 

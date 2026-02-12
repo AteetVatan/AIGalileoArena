@@ -27,8 +27,8 @@ export default function StartDashboard() {
     }, [data?.summary]);
 
     return (
-        <div className="grid grid-cols-2 grid-rows-2 gap-3 h-full">
-            <GlassCard title="Score Trend" size="sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-rows-2 gap-3 h-full">
+            <GlassCard title="Score Trend" size="sm" className="min-h-[200px] sm:min-h-0">
                 <Suspense fallback={<NeonSpinner />}>
                     {data?.trend?.series?.length ? (
                         <TrendChart series={data.trend.series} modelNames={modelNames} />
@@ -38,7 +38,7 @@ export default function StartDashboard() {
                 </Suspense>
             </GlassCard>
 
-            <GlassCard title="Distribution" size="sm">
+            <GlassCard title="Distribution" size="sm" className="min-h-[200px] sm:min-h-0">
                 <Suspense fallback={<NeonSpinner />}>
                     {data?.distribution?.items?.length ? (
                         <DistributionChart items={data.distribution.items} modelNames={modelNames} />
@@ -48,7 +48,7 @@ export default function StartDashboard() {
                 </Suspense>
             </GlassCard>
 
-            <GlassCard title="Breakdown" size="sm">
+            <GlassCard title="Breakdown" size="sm" className="min-h-[200px] sm:min-h-0">
                 <Suspense fallback={<NeonSpinner />}>
                     {data?.breakdown?.items?.length ? (
                         <ScoreBreakdownChart items={data.breakdown.items} modelNames={modelNames} />
@@ -58,7 +58,7 @@ export default function StartDashboard() {
                 </Suspense>
             </GlassCard>
 
-            <GlassCard title="Radar" size="sm">
+            <GlassCard title="Radar" size="sm" className="min-h-[200px] sm:min-h-0">
                 <Suspense fallback={<NeonSpinner />}>
                     {data?.radar?.entries?.length ? (
                         <RadarChart entries={data.radar.entries} modelNames={modelNames} />

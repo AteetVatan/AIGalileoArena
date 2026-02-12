@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import { DatasetSchema, DatasetDetailSchema, AvailableKeysResponseSchema } from "./schemas";
@@ -86,6 +87,9 @@ export function useCaseReplay(runId: string, caseId: string) {
 }
 
 export function useRunDetails(runId: string | null) {
+    const queryClient = useQueryClient();
+    const prevStatus = useRef<string | undefined>(undefined);
+
     const {
         data: run,
         isLoading: runLoading,
@@ -111,11 +115,20 @@ export function useRunDetails(runId: string | null) {
         queryFn: () => (runId ? api.getRunSummary(runId) : null),
         enabled: !!runId,
         refetchInterval: (query) => {
-            // Sync polling with run status if possible, or just poll if run is active
             if (!run) return 3000;
             return run.status !== "COMPLETED" && run.status !== "FAILED" ? 3000 : false;
         },
     });
+
+    useEffect(() => {
+        if (!runId || !run?.status) return;
+        const wasActive = prevStatus.current && prevStatus.current !== "COMPLETED" && prevStatus.current !== "FAILED";
+        const nowDone = run.status === "COMPLETED" || run.status === "FAILED";
+        prevStatus.current = run.status;
+        if (wasActive && nowDone) {
+            queryClient.invalidateQueries({ queryKey: queryKeys.runSummary(runId) });
+        }
+    }, [run?.status, runId, queryClient]);
 
     return {
         run,

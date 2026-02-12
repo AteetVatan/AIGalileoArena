@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
-import type { RunInfo, RunSummary } from "@/lib/types";
+import type { RunInfo, RunSummary, RunStatus } from "@/lib/types";
 
-/**
- * Polls run info + summary every few seconds until the run is done.
- */
+const TERMINAL_STATUSES: RunStatus[] = ["COMPLETED", "FAILED"];
+
 export function useRunData(runId: string | null) {
   const [run, setRun] = useState<RunInfo | null>(null);
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!runId) return;
@@ -21,18 +28,21 @@ export function useRunData(runId: string | null) {
       ]);
       setRun(r);
       setSummary(s);
+      if (TERMINAL_STATUSES.includes(r.status)) {
+        stopPolling();
+      }
     } catch {
       // run may not exist yet
     } finally {
       setLoading(false);
     }
-  }, [runId]);
+  }, [runId, stopPolling]);
 
   useEffect(() => {
     refresh();
-    const timer = setInterval(refresh, 3000);
-    return () => clearInterval(timer);
-  }, [refresh]);
+    timerRef.current = setInterval(refresh, 3000);
+    return stopPolling;
+  }, [refresh, stopPolling]);
 
   return { run, summary, loading, refresh };
 }

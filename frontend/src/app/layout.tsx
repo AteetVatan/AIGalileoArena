@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit, Inter, Great_Vibes } from "next/font/google";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { NavLockProvider } from "@/hooks/useNavLock";
 import styles from "./AmbientBackground.module.css";
 import "./globals.css";
 
@@ -41,8 +42,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className={styles.vignette} />
         </div>
         <QueryProvider>
-          <GlobalHeader />
-          {children}
+          <NavLockProvider>
+            <GlobalHeader />
+            {children}
+          </NavLockProvider>
         </QueryProvider>
       </body>
     </html>

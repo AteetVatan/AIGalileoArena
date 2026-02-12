@@ -54,7 +54,7 @@ export default function ScoreBreakdownChart({ items, modelNames }: ScoreBreakdow
 
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 15, left: 0 }}>
+            <BarChart data={chartData} margin={{ top: 5, right: 10, bottom: 15, left: -10 }}>
                 <defs>
                     {Object.entries(DIMENSION_COLORS).map(([key, color]) => (
                         <linearGradient key={key} id={`bd-${key}`} x1="0" y1="0" x2="0" y2="1">
@@ -71,7 +71,8 @@ export default function ScoreBreakdownChart({ items, modelNames }: ScoreBreakdow
                     cursor={{ fill: "rgba(34, 211, 238, 0.05)" }}
                 />
                 <Legend
-                    wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
+                    wrapperStyle={{ fontSize: "9px", paddingTop: "4px", lineHeight: "14px" }}
+                    iconSize={8}
                 />
                 {Object.entries(DIMENSION_COLORS).map(([key]) => (
                     <Bar

@@ -1592,3 +1592,7 @@ The scheduler evaluates all 5 hardcoded models × N datasets × M cases. Each ev
 | `EVAL_SCHEDULER_CRON_HOUR` | `2` | Prod only | Hour in APP_TIMEZONE for eval trigger |
 | `EVAL_SCHEDULER_DATASETS` | `6` | Prod only | Number of random datasets per eval batch |
 | `EVAL_SCHEDULER_CASES` | `1` | Prod only | Random cases per dataset per batch |
+
+### Deployment
+
+.\deploy.ps1 -BackendUrl "https://galileo-backend.up.railway.app" -SkipFrontend

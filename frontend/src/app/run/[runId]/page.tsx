@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -12,13 +12,15 @@ import { useRunDetails } from "@/lib/queries";
 import { api } from "@/lib/api";
 import type { SSEEvent } from "@/lib/eventTypes";
 import { Leaderboard } from "@/components/Leaderboard";
+import { EvidencePanel } from "@/components/EvidencePanel";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { LiveTranscript } from "@/components/LiveTranscript";
 import { PressureScatter } from "@/components/PressureScatter";
 import { ConfusionMatrix } from "@/components/ConfusionMatrix";
 import { CalibrationChart } from "@/components/CalibrationChart";
 import { FailGallery } from "@/components/FailGallery";
-import type { AgentMessage, CaseResult, DatasetDetail } from "@/lib/types";
+import type { AgentMessage, CaseResult, DatasetDetail, Evidence } from "@/lib/types";
+import { useNavLock } from "@/hooks/useNavLock";
 
 const Earth3D = dynamic(() => import("@/components/Earth3D"), { ssr: false });
 
@@ -29,8 +31,10 @@ export default function RunDashboard() {
   const [scores, setScores] = useState<CaseResult[]>([]);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [quotaAlert, setQuotaAlert] = useState<string | null>(null);
-  const [datasetInfo, setDatasetInfo] = useState<{ datasetId: string; caseTopic: string; claim: string } | null>(null);
+  const [datasetInfo, setDatasetInfo] = useState<{ datasetId: string; caseTopic: string; claim: string; evidences: Evidence[] } | null>(null);
   const [historicalMessagesLoaded, setHistoricalMessagesLoaded] = useState(false);
+  const { lock, unlock } = useNavLock();
+  const hasLockedRef = useRef(false);
 
   const handleEvent = useCallback((event: SSEEvent) => {
     switch (event.event_type) {
@@ -88,6 +92,31 @@ export default function RunDashboard() {
   }, []);
 
   const sseStatus = useSSE(runId ? api.eventsUrl(runId) : null, handleEvent);
+
+  // Lock nav while debate is in progress, unlock on completion/error
+  useEffect(() => {
+    const isActive = run?.status === "RUNNING" || run?.status === "PENDING";
+    const isDone = run?.status === "COMPLETED" || run?.status === "FAILED";
+    const sseStuck = sseStatus === "ERROR";
+
+    if (isActive && !isDone && !sseStuck) {
+      lock();
+      hasLockedRef.current = true;
+    } else if (hasLockedRef.current) {
+      unlock();
+      hasLockedRef.current = false;
+    }
+  }, [run?.status, sseStatus, lock, unlock]);
+
+  // Cleanup: unlock if user navigates away mid-debate
+  useEffect(() => {
+    return () => {
+      if (hasLockedRef.current) {
+        unlock();
+        hasLockedRef.current = false;
+      }
+    };
+  }, [unlock]);
 
   // Reset state when runId changes
   useEffect(() => {
@@ -173,6 +202,7 @@ export default function RunDashboard() {
             datasetId: dataset.id,
             caseTopic: caseData.topic,
             claim: caseData.claim,
+            evidences: caseData.evidence_packets ?? [],
           });
         }
       } catch (err) {
@@ -226,23 +256,23 @@ export default function RunDashboard() {
       </div>
       <div className="fixed inset-0 z-0 bg-gradient-to-t from-background via-transparent to-transparent pointer-events-none" />
 
-      <div className="relative z-10 flex-1 flex flex-col p-6 overflow-y-auto w-full h-full">
+      <div className="relative z-10 flex-1 flex flex-col p-3 sm:p-6 overflow-y-auto w-full h-full">
 
         {/* Header Section */}
-        <div className="mb-8 mt-12 w-full max-w-7xl mx-auto">
+        <div className="mb-4 sm:mb-8 mt-10 sm:mt-12 w-full max-w-7xl mx-auto">
           <GlassCard size="lg">
 
             {/* Title Area */}
-            <div className="flex items-start gap-4 z-10">
-              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-                <Swords className="h-8 w-8 animate-pulse" />
+            <div className="flex items-start gap-3 sm:gap-4 z-10">
+              <div className="p-2 sm:p-3 rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+                <Swords className="h-5 w-5 sm:h-8 sm:w-8 animate-pulse" />
               </div>
               <div>
                 <div className="flex items-center gap-3 mb-1">
                   <span className="text-xs font-bold tracking-[0.2em] text-cyan-400 uppercase">Active Debate Protocol</span>
                   <div className="h-px w-12 bg-gradient-to-l from-cyan-400 to-transparent"></div>
                 </div>
-                <h1 className="text-3xl font-light text-white tracking-tight">
+                <h1 className="text-xl sm:text-3xl font-light text-white tracking-tight">
                   {datasetInfo ? (
                     <span className="flex items-baseline gap-2 flex-wrap">
                       <span className="font-semibold text-white">{datasetInfo.datasetId}</span>
@@ -259,7 +289,7 @@ export default function RunDashboard() {
             </div>
 
             {/* Stats / Status Area */}
-            <div className="flex items-center gap-6 z-10 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 z-10 w-full">
               {datasetInfo?.claim && (
                 <div className="hidden lg:block max-w-md">
                   <div className="text-xs text-white/40 mb-1 uppercase tracking-wider">Target Claim</div>
@@ -340,11 +370,12 @@ export default function RunDashboard() {
         {/* Main Content Grid */}
         <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6 pb-12">
           <div className="lg:col-span-2 space-y-6">
-            <LiveTranscript messages={messages} sseStatus={sseStatus} />
+            <LiveTranscript messages={messages} sseStatus={sseStatus} debugMode={run?.debug_mode ?? summary?.debug_mode ?? false} />
           </div>
 
           <div className="space-y-6">
             <Leaderboard models={summary?.models ?? []} />
+            <EvidencePanel evidences={datasetInfo?.evidences ?? []} />
             <div className="glass-panel p-1 rounded-3xl overflow-hidden">
               <PressureScatter results={scores} />
             </div>

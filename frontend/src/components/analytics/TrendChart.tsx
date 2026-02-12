@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-    Legend, CartesianGrid,
+    CartesianGrid,
 } from "recharts";
 import type { ModelTrendSeries } from "@/lib/galileoTypes";
 import { TOOLTIP_STYLE } from "@/lib/chartConfig";
@@ -48,7 +48,7 @@ export default function TrendChart({ series, modelNames }: TrendChartProps) {
 
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
                 <defs>
                     {series.map((s, i) => (
                         <linearGradient key={s.llm_id} id={`trend-grad-${i}`} x1="0" y1="0" x2="0" y2="1">
@@ -58,18 +58,15 @@ export default function TrendChart({ series, modelNames }: TrendChartProps) {
                     ))}
                 </defs>
                 <CartesianGrid strokeDasharray="3 6" stroke="#1e293b" />
-                <XAxis dataKey="date" stroke="#334155" fontSize={11} tickLine={false} />
-                <YAxis stroke="#334155" fontSize={11} tickLine={false} axisLine={false} />
+                <XAxis dataKey="date" stroke="#334155" fontSize={10} tickLine={false} />
+                <YAxis stroke="#334155" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend
-                    wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
-                />
                 {series.map((s, i) => (
                     <Area
                         key={s.llm_id}
                         type="monotone"
                         dataKey={s.llm_id}
-                        name={modelNames.get(s.llm_id) ?? s.llm_id.slice(0, 8)}
+                        name={(modelNames.get(s.llm_id) ?? s.llm_id).split("/").pop()!}
                         stroke={PALETTE[i % PALETTE.length]}
                         strokeWidth={2.5}
                         fill={`url(#trend-grad-${i})`}
