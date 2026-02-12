@@ -43,7 +43,7 @@ export default function DistributionChart({ items, modelNames }: DistributionCha
 
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 15, left: 0 }}>
+            <BarChart data={chartData} margin={{ top: 5, right: 10, bottom: 15, left: -10 }}>
                 <defs>
                     {chartData.map((_, i) => (
                         <linearGradient key={i} id={`dist-bar-${i}`} x1="0" y1="0" x2="0" y2="1">
@@ -72,9 +72,8 @@ export default function DistributionChart({ items, modelNames }: DistributionCha
                 />
                 <Bar dataKey="mean" radius={[6, 6, 0, 0]}>
                     {chartData.map((_, i) => (
-                        <Cell key={i} fill={`url(#dist-bar-${i})`} />
+                        <Cell key={`cell-${i}`} fill={`url(#dist-bar-${i})`} />
                     ))}
-                    <ErrorBar dataKey="spread" stroke="#fbbf24" strokeWidth={1.5} />
                 </Bar>
             </BarChart>
         </ResponsiveContainer>

@@ -20,22 +20,41 @@ function RadialProgress({ pct, rankIdx }: { pct: number; rankIdx: number }) {
   const style = rankIdx < 3 ? RANK_STYLES[rankIdx] : null;
 
   return (
-    <svg width={68} height={68} className="shrink-0">
-      <circle cx={34} cy={34} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={4} />
-      <circle
-        cx={34} cy={34} r={r} fill="none"
-        className={style?.ring ?? "stroke-cyan-400"}
-        strokeWidth={4}
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        transform="rotate(-90 34 34)"
-        style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)" }}
-      />
-      <text x={34} y={36} textAnchor="middle" className="fill-white text-[11px] font-bold">
-        {pct.toFixed(0)}%
-      </text>
-    </svg>
+    <>
+      <svg width={68} height={68} className="shrink-0 hidden sm:block">
+        <circle cx={34} cy={34} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={4} />
+        <circle
+          cx={34} cy={34} r={r} fill="none"
+          className={style?.ring ?? "stroke-cyan-400"}
+          strokeWidth={4}
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          transform="rotate(-90 34 34)"
+          style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)" }}
+        />
+        <text x={34} y={36} textAnchor="middle" className="fill-white text-[11px] font-bold">
+          {pct.toFixed(0)}%
+        </text>
+      </svg>
+      {/* Smaller mobile version */}
+      <svg width={44} height={44} className="shrink-0 sm:hidden">
+        <circle cx={22} cy={22} r={18} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={3} />
+        <circle
+          cx={22} cy={22} r={18} fill="none"
+          className={style?.ring ?? "stroke-cyan-400"}
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeDasharray={2 * Math.PI * 18}
+          strokeDashoffset={2 * Math.PI * 18 - (pct / 100) * 2 * Math.PI * 18}
+          transform="rotate(-90 22 22)"
+          style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)" }}
+        />
+        <text x={22} y={24} textAnchor="middle" className="fill-white text-[9px] font-bold">
+          {pct.toFixed(0)}%
+        </text>
+      </svg>
+    </>
   );
 }
 
@@ -53,14 +72,14 @@ export function Leaderboard({ models }: Props) {
   const sorted = [...models].sort((a, b) => b.pass_rate - a.pass_rate);
 
   return (
-    <div className="glass-panel rounded-3xl p-6 relative overflow-hidden">
+    <div className="glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-6 relative overflow-hidden">
       <div className="absolute -top-16 -right-16 w-44 h-44 bg-gradient-radial from-cyan-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
         <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
           <Trophy className="w-4 h-4 text-cyan-400" />
         </div>
-        <h2 className="text-lg font-medium text-cyan-300 tracking-wide">Arena Leaderboard</h2>
+        <h2 className="text-base sm:text-lg font-medium text-cyan-300 tracking-wide">Arena Leaderboard</h2>
       </div>
 
       {sorted.length === 0 ? (
@@ -80,11 +99,11 @@ export function Leaderboard({ models }: Props) {
               <div
                 key={m.model_key}
                 className={`relative rounded-2xl border transition-all duration-300 hover:scale-[1.01] ${style
-                    ? `bg-gradient-to-r from-white/[0.06] to-white/[0.02] border-white/10 ${style.glow}`
-                    : "bg-white/[0.03] border-white/5 hover:border-white/10"
+                  ? `bg-gradient-to-r from-white/[0.06] to-white/[0.02] border-white/10 ${style.glow}`
+                  : "bg-white/[0.03] border-white/5 hover:border-white/10"
                   }`}
               >
-                <div className="flex items-center gap-4 p-4">
+                <div className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4">
                   {/* Rank badge */}
                   <div className="relative">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black ${style ? `bg-gradient-to-br ${style.badge} text-black` : "bg-white/10 text-white/50"
@@ -104,8 +123,8 @@ export function Leaderboard({ models }: Props) {
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-sm font-mono text-white/90 truncate">{m.model_key}</p>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${m.model_passes_eval
-                          ? "bg-green-500/15 text-green-300 border border-green-500/25"
-                          : "bg-red-500/15 text-red-300 border border-red-500/25"
+                        ? "bg-green-500/15 text-green-300 border border-green-500/25"
+                        : "bg-red-500/15 text-red-300 border border-red-500/25"
                         }`}>
                         {m.model_passes_eval ? "PASS" : "FAIL"}
                       </span>
@@ -123,8 +142,8 @@ export function Leaderboard({ models }: Props) {
                     <div className="mt-2 h-1 rounded-full bg-white/5 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-1000 ${m.model_passes_eval
-                            ? "bg-gradient-to-r from-green-400 to-emerald-500"
-                            : "bg-gradient-to-r from-red-400 to-rose-500"
+                          ? "bg-gradient-to-r from-green-400 to-emerald-500"
+                          : "bg-gradient-to-r from-red-400 to-rose-500"
                           }`}
                         style={{ width: `${pct}%` }}
                       />

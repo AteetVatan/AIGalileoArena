@@ -59,21 +59,21 @@ export default function RadarChart({ entries, modelNames }: RadarChartProps) {
 
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <RechartsRadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
+            <RechartsRadarChart cx="50%" cy="50%" outerRadius="65%" data={chartData}>
                 <PolarGrid stroke="#1e293b" strokeDasharray="3 3" />
                 <PolarAngleAxis
                     dataKey="dimension"
                     stroke="#64748b"
-                    fontSize={11}
+                    fontSize={9}
                     tickLine={false}
                 />
                 <PolarRadiusAxis stroke="#1e293b" fontSize={10} axisLine={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
+                <Legend wrapperStyle={{ fontSize: "9px", paddingTop: "4px", lineHeight: "14px" }} iconSize={8} />
                 {llmIds.map((id, i) => (
                     <Radar
                         key={id}
-                        name={modelNames.get(id) ?? id.slice(0, 8)}
+                        name={(modelNames.get(id) ?? id).split("/").pop()!}
                         dataKey={id}
                         stroke={PALETTE[i % PALETTE.length]}
                         strokeWidth={2}

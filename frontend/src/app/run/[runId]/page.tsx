@@ -256,23 +256,23 @@ export default function RunDashboard() {
       </div>
       <div className="fixed inset-0 z-0 bg-gradient-to-t from-background via-transparent to-transparent pointer-events-none" />
 
-      <div className="relative z-10 flex-1 flex flex-col p-6 overflow-y-auto w-full h-full">
+      <div className="relative z-10 flex-1 flex flex-col p-3 sm:p-6 overflow-y-auto w-full h-full">
 
         {/* Header Section */}
-        <div className="mb-8 mt-12 w-full max-w-7xl mx-auto">
+        <div className="mb-4 sm:mb-8 mt-10 sm:mt-12 w-full max-w-7xl mx-auto">
           <GlassCard size="lg">
 
             {/* Title Area */}
-            <div className="flex items-start gap-4 z-10">
-              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-                <Swords className="h-8 w-8 animate-pulse" />
+            <div className="flex items-start gap-3 sm:gap-4 z-10">
+              <div className="p-2 sm:p-3 rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+                <Swords className="h-5 w-5 sm:h-8 sm:w-8 animate-pulse" />
               </div>
               <div>
                 <div className="flex items-center gap-3 mb-1">
                   <span className="text-xs font-bold tracking-[0.2em] text-cyan-400 uppercase">Active Debate Protocol</span>
                   <div className="h-px w-12 bg-gradient-to-l from-cyan-400 to-transparent"></div>
                 </div>
-                <h1 className="text-3xl font-light text-white tracking-tight">
+                <h1 className="text-xl sm:text-3xl font-light text-white tracking-tight">
                   {datasetInfo ? (
                     <span className="flex items-baseline gap-2 flex-wrap">
                       <span className="font-semibold text-white">{datasetInfo.datasetId}</span>
@@ -289,7 +289,7 @@ export default function RunDashboard() {
             </div>
 
             {/* Stats / Status Area */}
-            <div className="flex items-center gap-6 z-10 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 z-10 w-full">
               {datasetInfo?.claim && (
                 <div className="hidden lg:block max-w-md">
                   <div className="text-xs text-white/40 mb-1 uppercase tracking-wider">Target Claim</div>
@@ -370,7 +370,7 @@ export default function RunDashboard() {
         {/* Main Content Grid */}
         <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6 pb-12">
           <div className="lg:col-span-2 space-y-6">
-            <LiveTranscript messages={messages} sseStatus={sseStatus} />
+            <LiveTranscript messages={messages} sseStatus={sseStatus} debugMode={run?.debug_mode ?? summary?.debug_mode ?? false} />
           </div>
 
           <div className="space-y-6">
