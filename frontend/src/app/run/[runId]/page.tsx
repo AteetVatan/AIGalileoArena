@@ -165,11 +165,14 @@ export default function RunDashboard() {
 
 
 
-    // If run is completed and we have no messages, load historical messages once
+    // If run is completed and we have no messages, load historical data once
     if (run.status === "COMPLETED") {
-      const loadHistoricalMessages = async () => {
+      const loadHistoricalData = async () => {
         try {
-          const historicalMessages = await api.getRunMessages(runId);
+          const [historicalMessages, casesResponse] = await Promise.all([
+            api.getRunMessages(runId),
+            api.getRunCases(runId, { limit: 200 }),
+          ]);
           setMessages(
             historicalMessages.map((m) => ({
               role: m.role,
@@ -179,13 +182,16 @@ export default function RunDashboard() {
               round: m.round ?? undefined,
             }))
           );
+          if (casesResponse.cases.length > 0) {
+            setScores(casesResponse.cases);
+          }
         } catch (err) {
-          console.error("Failed to load historical messages:", err);
+          console.error("Failed to load historical data:", err);
         } finally {
           setHistoricalMessagesLoaded(true);
         }
       };
-      loadHistoricalMessages();
+      loadHistoricalData();
     }
   }, [runId, run?.status, historicalMessagesLoaded, messages.length]);
 
@@ -376,18 +382,10 @@ export default function RunDashboard() {
           <div className="space-y-6">
             <Leaderboard models={summary?.models ?? []} />
             <EvidencePanel evidences={datasetInfo?.evidences ?? []} />
-            <div className="glass-panel p-1 rounded-3xl overflow-hidden">
-              <PressureScatter results={scores} />
-            </div>
-            <div className="glass-panel p-1 rounded-3xl overflow-hidden">
-              <ConfusionMatrix results={scores} />
-            </div>
-            <div className="glass-panel p-1 rounded-3xl overflow-hidden">
-              <CalibrationChart results={scores} />
-            </div>
-            <div className="glass-panel p-1 rounded-3xl overflow-hidden">
-              <FailGallery runId={runId} results={scores} />
-            </div>
+            <PressureScatter results={scores} />
+            <ConfusionMatrix results={scores} />
+            <CalibrationChart results={scores} />
+            <FailGallery runId={runId} results={scores} />
           </div>
         </div>
       </div>
