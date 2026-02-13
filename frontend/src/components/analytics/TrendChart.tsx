@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import {
-    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-    CartesianGrid,
+    LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+    CartesianGrid, Legend,
 } from "recharts";
 import type { ModelTrendSeries } from "@/lib/galileoTypes";
 import { TOOLTIP_STYLE } from "@/lib/chartConfig";
@@ -48,29 +48,24 @@ export default function TrendChart({ series, modelNames }: TrendChartProps) {
 
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
-                <defs>
-                    {series.map((s, i) => (
-                        <linearGradient key={s.llm_id} id={`trend-grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={PALETTE[i % PALETTE.length]} stopOpacity={0.3} />
-                            <stop offset="95%" stopColor={PALETTE[i % PALETTE.length]} stopOpacity={0} />
-                        </linearGradient>
-                    ))}
-                </defs>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
                 <CartesianGrid strokeDasharray="3 6" stroke="#1e293b" />
                 <XAxis dataKey="date" stroke="#334155" fontSize={10} tickLine={false} />
                 <YAxis stroke="#334155" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Legend
+                    wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                    iconType="plainline"
+                />
                 {series.map((s, i) => (
-                    <Area
+                    <Line
                         key={s.llm_id}
                         type="monotone"
                         dataKey={s.llm_id}
                         name={(modelNames.get(s.llm_id) ?? s.llm_id).split("/").pop()!}
                         stroke={PALETTE[i % PALETTE.length]}
                         strokeWidth={2.5}
-                        fill={`url(#trend-grad-${i})`}
-                        dot={false}
+                        dot={{ r: 3, fill: PALETTE[i % PALETTE.length], strokeWidth: 0 }}
                         activeDot={{
                             r: 5,
                             strokeWidth: 2,
@@ -78,10 +73,10 @@ export default function TrendChart({ series, modelNames }: TrendChartProps) {
                             fill: "#0f172a",
                             style: { filter: `drop-shadow(0 0 6px ${PALETTE[i % PALETTE.length]})` },
                         }}
-                        connectNulls={false}
+                        connectNulls={true}
                     />
                 ))}
-            </AreaChart>
+            </LineChart>
         </ResponsiveContainer>
     );
 }
