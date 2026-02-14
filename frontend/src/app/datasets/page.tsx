@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { AVAILABLE_MODELS } from "@/lib/constants";
 import CopernicanSystem from "@/components/CopernicanSystem";
 import { ModelSelector } from "@/components/ModelSelector";
 import type {
@@ -12,7 +11,7 @@ import type {
     KeyValidationResult,
     KeyValidationStatus
 } from "@/lib/types";
-import { useDatasets, useDataset } from "@/lib/queries";
+import { useDatasets, useDataset, useModelRegistry } from "@/lib/queries";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { useKeyValidation } from "@/hooks/useKeyValidation";
 
@@ -24,6 +23,8 @@ export default function DatasetsPage() {
 
     const { data: datasetDetail, isLoading: casesLoading } = useDataset(selected || null);
     const cases = datasetDetail?.cases || [];
+
+    const { data: models = [] } = useModelRegistry();
 
     const [selectedCaseId, setSelectedCaseId] = useState<string>("");
     const [selectedModel, setSelectedModel] = useState<string>("");
@@ -93,7 +94,7 @@ export default function DatasetsPage() {
         setLaunching(true);
         setError("");
         try {
-            const m = AVAILABLE_MODELS.find(
+            const m = models.find(
                 (am) => am.id === selectedModel
             )!;
             const modelConfigs = [
@@ -229,6 +230,7 @@ export default function DatasetsPage() {
                     {selected && selectedCaseId && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <ModelSelector
+                                models={models}
                                 selectedModel={selectedModel}
                                 onSelectModel={setSelectedModel}
                                 isModelDisabled={isModelDisabled}

@@ -1,15 +1,16 @@
-import { AVAILABLE_MODELS } from "@/lib/constants";
 import { AlertTriangle, Info, RefreshCw } from "lucide-react";
 import type { KeyValidationResult, KeyValidationStatus } from "@/lib/types";
+import type { ModelRegistryEntry } from "@/lib/api";
 import { RefObject } from "react";
 
 interface Props {
+    models: ModelRegistryEntry[];
     selectedModel: string;
     onSelectModel: (model: string) => void;
-    isModelDisabled: (model: (typeof AVAILABLE_MODELS)[0]) => boolean;
-    getValidationStatus: (model: (typeof AVAILABLE_MODELS)[0]) => KeyValidationStatus | null;
-    getDisabledReason?: (model: (typeof AVAILABLE_MODELS)[0]) => string | null;
-    getModelUsageRemaining?: (model: (typeof AVAILABLE_MODELS)[0]) => number | null;
+    isModelDisabled: (model: ModelRegistryEntry) => boolean;
+    getValidationStatus: (model: ModelRegistryEntry) => KeyValidationStatus | null;
+    getDisabledReason?: (model: ModelRegistryEntry) => string | null;
+    getModelUsageRemaining?: (model: ModelRegistryEntry) => number | null;
     validationLoading: boolean;
     onRefreshValidation: () => void;
     keyValidation: Map<string, KeyValidationResult>;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function ModelSelector({
+    models,
     selectedModel,
     onSelectModel,
     isModelDisabled,
@@ -67,7 +69,7 @@ export function ModelSelector({
                     className="w-full appearance-none bg-background/50 border border-primary/20 rounded-xl px-5 py-4 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all font-medium"
                 >
                     <option value="" className="bg-background text-muted-foreground">-- Select an Inference Engine --</option>
-                    {AVAILABLE_MODELS.map((model) => {
+                    {models.map((model) => {
                         const disabled = isModelDisabled(model);
                         const remaining = getModelUsageRemaining?.(model);
                         const suffix = remaining !== null && remaining !== undefined
@@ -89,7 +91,7 @@ export function ModelSelector({
             </div>
 
             {selectedModel && (() => {
-                const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+                const model = models.find(m => m.id === selectedModel);
                 if (!model) return null;
 
                 const reason = getDisabledReason?.(model);

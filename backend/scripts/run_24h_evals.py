@@ -20,8 +20,17 @@ import random
 import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
+
+# Add backend to sys.path so we can import app modules
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+if str(_BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_ROOT))
+
+from app.config import settings  # noqa: E402
+from app.core.model_registry import get_scheduler_models  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,14 +39,8 @@ logging.basicConfig(
 )
 log = logging.getLogger("run_24h")
 
-MODELS = [
-    {"provider": "openai",    "model_name": "gpt-4o",                   "api_key_env": "OPENAI_API_KEY"},
-    {"provider": "anthropic", "model_name": "claude-sonnet-4-20250514", "api_key_env": "ANTHROPIC_API_KEY"},
-    {"provider": "mistral",   "model_name": "mistral-large-latest",     "api_key_env": "MISTRAL_API_KEY"},
-    {"provider": "deepseek",  "model_name": "deepseek-chat",            "api_key_env": "DEEPSEEK_API_KEY"},
-    {"provider": "gemini",    "model_name": "gemini-2.0-flash",         "api_key_env": "GEMINI_API_KEY"},
-    {"provider": "grok",      "model_name": "grok-3",                   "api_key_env": "GROK_API_KEY"},
-]
+# Load models from LLM_* env vars (auto-derived from .env)
+MODELS = get_scheduler_models(settings.registered_models)
 
 N_DATASETS = 2
 N_CASES = 2

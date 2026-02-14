@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import type { ModelRegistryEntry } from "./api";
 import { DatasetSchema, DatasetDetailSchema, AvailableKeysResponseSchema } from "./schemas";
 import type { RunRequest } from "./types";
 
@@ -11,6 +12,7 @@ export const queryKeys = {
     availableKeys: ["availableKeys"] as const,
     keyValidation: ["keyValidation"] as const,
     debateConfig: ["debateConfig"] as const,
+    modelRegistry: ["modelRegistry"] as const,
     run: (id: string) => ["run", id] as const,
     runSummary: (id: string) => ["runSummary", id] as const,
     caseReplay: (runId: string, caseId: string) => ["caseReplay", runId, caseId] as const,
@@ -59,6 +61,17 @@ export function useDebateConfig() {
         queryKey: queryKeys.debateConfig,
         queryFn: () => api.getDebateConfig(),
         staleTime: 30 * 1000,
+    });
+}
+
+export function useModelRegistry() {
+    return useQuery<ModelRegistryEntry[]>({
+        queryKey: queryKeys.modelRegistry,
+        queryFn: async () => {
+            const data = await api.getModelRegistry();
+            return data.models;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes — models rarely change at runtime
     });
 }
 

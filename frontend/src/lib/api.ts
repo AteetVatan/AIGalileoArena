@@ -24,6 +24,14 @@ export interface DebateConfig {
   usage_today: Record<string, number>;
 }
 
+export interface ModelRegistryEntry {
+  id: string;
+  provider: string;
+  model_name: string;
+  label: string;
+  api_key_env: string;
+}
+
 async function fetchJSON<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`);
   if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
@@ -114,6 +122,10 @@ export const api = {
 
   async getDebateConfig(): Promise<DebateConfig> {
     return fetchJSON<DebateConfig>("/models/debate-config");
+  },
+
+  async getModelRegistry(): Promise<{ models: ModelRegistryEntry[] }> {
+    return fetchJSON<{ models: ModelRegistryEntry[] }>("/models/registry");
   },
 
   eventsUrl(runId: string): string {

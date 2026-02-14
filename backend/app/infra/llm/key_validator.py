@@ -16,6 +16,7 @@ from .preflight import (
     preflight_gemini,
     preflight_grok,
     preflight_mistral,
+    preflight_moonshotai,
     preflight_openai,
 )
 from .preflight_constants import API_KEY_ENV_NAMES
@@ -113,6 +114,7 @@ async def _validate_single_key(
         "DEEPSEEK_API_KEY": preflight_deepseek,
         "GEMINI_API_KEY": preflight_gemini,
         "GROK_API_KEY": preflight_grok,
+        "MOONSHOTAI_API_KEY": preflight_moonshotai,
     }
 
     preflight_func = preflight_functions.get(api_key_env)

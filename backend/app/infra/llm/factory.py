@@ -27,6 +27,9 @@ def _get_provider_class(provider: str) -> type:
     if provider == LLMProvider.GROK:
         from .grok_client import GrokClient
         return GrokClient
+    if provider == LLMProvider.MOONSHOTAI:
+        from .moonshotai_client import MoonshotAIClient
+        return MoonshotAIClient
 
     raise ValueError(
         f"Unknown provider '{provider}'. Supported: "

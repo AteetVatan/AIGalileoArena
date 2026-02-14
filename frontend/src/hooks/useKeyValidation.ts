@@ -3,9 +3,9 @@
 import { useCallback, useMemo } from "react";
 import { useAvailableKeys, useValidateKeys, useDebateConfig } from "@/lib/queries";
 import type { KeyValidationStatus } from "@/lib/types";
-import { AVAILABLE_MODELS } from "@/lib/constants";
+import type { ModelRegistryEntry } from "@/lib/api";
 
-type ModelDef = (typeof AVAILABLE_MODELS)[0];
+type ModelDef = ModelRegistryEntry;
 
 export function useKeyValidation() {
     const { data: availableKeysData } = useAvailableKeys();

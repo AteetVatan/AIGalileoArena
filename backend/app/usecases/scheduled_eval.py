@@ -9,6 +9,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.model_registry import get_scheduler_models
 from app.infra.db.repository import Repository
 from app.infra.db.session import async_session_factory
 from app.infra.sse.event_bus import event_bus
@@ -16,13 +17,10 @@ from app.usecases.run_eval import RunEvalUsecase
 
 logger = logging.getLogger(__name__)
 
-_SCHEDULER_MODELS = [
-    {"provider": "openai", "model_name": "gpt-4o", "api_key_env": "OPENAI_API_KEY"},
-    {"provider": "anthropic", "model_name": "claude-sonnet-4-20250514", "api_key_env": "ANTHROPIC_API_KEY"},
-    {"provider": "mistral", "model_name": "mistral-large-latest", "api_key_env": "MISTRAL_API_KEY"},
-    {"provider": "deepseek", "model_name": "deepseek-chat", "api_key_env": "DEEPSEEK_API_KEY"},
-    {"provider": "grok", "model_name": "grok-3", "api_key_env": "GROK_API_KEY"},
-]
+
+def _get_scheduler_models() -> list[dict[str, str]]:
+    """Load models from the LLM_* env-var registry."""
+    return get_scheduler_models(settings.registered_models)
 
 _STATUS_COMPLETED = "completed"
 _STATUS_SKIPPED = "skipped"
@@ -85,7 +83,7 @@ async def run_scheduled_eval(
         chosen_cases = random.sample(cases, min(n_cases, len(cases)))
 
         for case_row in chosen_cases:
-            for model in _SCHEDULER_MODELS:
+            for model in _get_scheduler_models():
                 try:
                     await _run_single_eval(
                         dataset_id=ds.id,

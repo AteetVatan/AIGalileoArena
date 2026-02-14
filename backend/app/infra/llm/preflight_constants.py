@@ -10,12 +10,14 @@ PREFLIGHT_MODELS: Final[dict[str, str]] = {
     "mistral": "mistral-small-latest",
     "deepseek": "deepseek-chat",
     "grok": "grok-3",
+    "moonshotai": "moonshotai/Kimi-K2.5",
 }
 
 PROVIDER_BASE_URLS: Final[dict[str, str]] = {
     "openai": "https://api.openai.com/v1",
     "deepseek": "https://api.deepseek.com",
     "grok": "https://api.x.ai/v1",
+    "moonshotai": "https://api.together.xyz/v1",
 }
 
 API_KEY_ENV_NAMES: Final[dict[str, str]] = {
@@ -25,6 +27,7 @@ API_KEY_ENV_NAMES: Final[dict[str, str]] = {
     "mistral": "MISTRAL_API_KEY",
     "deepseek": "DEEPSEEK_API_KEY",
     "grok": "GROK_API_KEY",
+    "moonshotai": "MOONSHOTAI_API_KEY",
 }
 
 PREFLIGHT_TEST_CONTENT: Final[str] = "test"
