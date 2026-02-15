@@ -344,7 +344,7 @@ export default function RunDashboard() {
               <h2 className="text-xs font-bold text-yellow-500/80 mb-2 uppercase tracking-widest flex items-center gap-2">
                 <Shield className="w-3 h-3" /> Debug Environment Active
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-xs font-mono">
                 <div className="p-2 bg-black/20 rounded">
                   <span className="text-white/40 block mb-1">LLM Cost</span>
                   <span className="text-cyan-300 font-bold">${(run?.total_llm_cost ?? summary?.total_llm_cost ?? 0).toFixed(6)}</span>

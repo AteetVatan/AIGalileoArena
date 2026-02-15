@@ -56,12 +56,12 @@ export function GlassCard({ children, title, className = "", size = "md", expand
     const overlay = expanded
         ? createPortal(
             <div
-                className="fixed inset-0 z-50 flex items-center justify-center p-6 animate-[fadeIn_200ms_ease-out]"
+                className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-[fadeIn_200ms_ease-out]"
                 onClick={close}
             >
                 <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
                 <div
-                    className="relative w-full h-full max-w-[95vw] max-h-[92vh] bg-[hsl(224_28%_9%/0.95)] backdrop-blur-xl rounded-2xl border border-white/[0.08] p-8 shadow-[0_8px_64px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)] flex flex-col animate-[scaleIn_200ms_ease-out]"
+                    className="relative w-full h-full max-w-[95vw] max-h-[92vh] bg-[hsl(224_28%_9%/0.95)] backdrop-blur-xl rounded-2xl border border-white/[0.08] p-4 sm:p-8 shadow-[0_8px_64px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)] flex flex-col animate-[scaleIn_200ms_ease-out]"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />

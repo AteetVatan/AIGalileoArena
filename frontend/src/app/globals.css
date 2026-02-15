@@ -76,6 +76,15 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-outfit), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
   }
 }
 
