@@ -1,5 +1,8 @@
 # Galileo Arena
 
+> 🌐 **Live Demo:** [https://galileo.masxai.com/](https://galileo.masxai.com/)
+
+
 **Multi-model agentic debate evaluation platform** implementing the Galileo Test for AI LLM assessment via adversarial deliberation, live SSE streaming, and deterministic + ML hybrid scoring.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)

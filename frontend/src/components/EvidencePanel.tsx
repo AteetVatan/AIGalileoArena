@@ -44,7 +44,7 @@ export function EvidencePanel({ evidences }: Props) {
     if (evidences.length === 0) return null;
 
     return (
-        <div className="glass-panel rounded-3xl p-6 relative overflow-hidden">
+        <div className="glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-6 relative overflow-hidden">
             <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-gradient-radial from-indigo-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
 
             <div className="flex items-center gap-3 mb-4">

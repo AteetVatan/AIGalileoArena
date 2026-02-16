@@ -79,6 +79,7 @@ class LLMProvider(str, Enum):
     DEEPSEEK = "deepseek"
     GEMINI = "gemini"
     GROK = "grok"
+    MOONSHOTAI = "moonshotai"
 
 
 class RunMode(str, Enum):

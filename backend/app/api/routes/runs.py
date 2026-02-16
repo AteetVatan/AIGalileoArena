@@ -49,9 +49,9 @@ async def _enforce_and_record_prod_usage(
     if settings.debug:
         return
 
-    allowed = settings.debate_enabled_model_keys
+    allowed = settings.debate_enabled_production_model_keys
     today = get_today_in_tz()
-    cap = settings.debate_daily_cap
+    cap = settings.debate_daily_production_cap
 
     for m in models:
         model_key = f"{m['provider']}/{m['model_name']}"
@@ -117,7 +117,7 @@ async def _prepare_run(
         await _enforce_and_record_prod_usage(repo, models)
     except ModelNotAllowedError as exc:
         raise HTTPException(403, _ERR_MODEL_NOT_ALLOWED.format(
-            exc.model_key, ", ".join(settings.debate_enabled_model_keys),
+            exc.model_key, ", ".join(settings.debate_enabled_production_model_keys),
         )) from exc
     except DailyCapExceededError as exc:
         raise HTTPException(429, _ERR_DAILY_CAP_REACHED.format(

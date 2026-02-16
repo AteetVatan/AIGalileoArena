@@ -77,9 +77,27 @@ async def get_debate_config(
 
     return {
         "debug_mode": False,
-        "allowed_models": settings.debate_enabled_model_keys,
-        "daily_cap": settings.debate_daily_cap,
+        "allowed_models": settings.debate_enabled_production_model_keys,
+        "daily_cap": settings.debate_daily_production_cap,
         "usage_today": usage,
+    }
+
+
+@router.get("/registry")
+async def get_model_registry():
+    """Return the full list of registered models from LLM_* env vars."""
+    models = settings.registered_models
+    return {
+        "models": [
+            {
+                "id": m.id,
+                "provider": m.provider,
+                "model_name": m.model_name,
+                "label": m.label,
+                "api_key_env": m.api_key_env,
+            }
+            for m in models
+        ],
     }
 
 

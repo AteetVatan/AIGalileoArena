@@ -29,6 +29,12 @@ export const metadata: Metadata = {
   description: "Multi-model agentic debate evaluation platform",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>

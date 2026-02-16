@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, Suspense, lazy } from "react";
-import { BarChart3, Shield, Settings } from "lucide-react";
+import { BarChart3, Shield, Settings, Box } from "lucide-react";
 import {
     useModelsSummary, useModelsTrend, useDistribution,
     useUplift, useFailures, usePareto,
@@ -24,11 +24,14 @@ const HallucinationTrendChart = lazy(() => import("@/components/analytics/Halluc
 const CalibrationScatter = lazy(() => import("@/components/analytics/CalibrationScatter"));
 const CostPerPassChart = lazy(() => import("@/components/analytics/CostPerPassChart"));
 
+const ParetoNebula3D = lazy(() => import("@/components/three/ParetoNebula3D"));
+const TrendCurrents3D = lazy(() => import("@/components/three/TrendCurrents3D"));
 
 const TAB_PERFORMANCE = "performance";
 const TAB_ROBUSTNESS = "robustness";
 const TAB_EFFECTIVENESS = "effectiveness";
 const TAB_OPS = "ops";
+const TAB_3D = "3d";
 
 interface TabDef {
     id: string;
@@ -41,6 +44,7 @@ const TABS: TabDef[] = [
     { id: TAB_ROBUSTNESS, label: "Robustness", icon: Shield },
     // { id: TAB_EFFECTIVENESS, label: "Galileo Effect", icon: Microscope },  // TODO: re-enable when baseline mode is implemented
     { id: TAB_OPS, label: "Operations", icon: Settings },
+    { id: TAB_3D, label: "3D Arena", icon: Box },
 ];
 
 const WINDOW_OPTIONS = [7, 14, 30, 90] as const;
@@ -82,26 +86,28 @@ export default function GraphsPage() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 py-6">
-                <div className="flex gap-0 mb-6 border-b border-white/[0.06] w-fit">
-                    {TABS.map((tab) => {
-                        const Icon = tab.icon;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`relative px-5 py-3 text-sm font-medium transition-all duration-300 flex items-center gap-2 ${activeTab === tab.id
-                                    ? "text-cyan-300"
-                                    : "text-white/35 hover:text-white/60"
-                                    }`}
-                            >
-                                <Icon className="w-4 h-4" />
-                                {tab.label}
-                                {activeTab === tab.id && (
-                                    <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-cyan-400 to-teal-400 rounded-full" />
-                                )}
-                            </button>
-                        );
-                    })}
+                <div className="overflow-x-auto hide-scrollbar -mx-4 px-4 mb-6">
+                    <div className="flex gap-0 border-b border-white/[0.06] min-w-max">
+                        {TABS.map((tab) => {
+                            const Icon = tab.icon;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`relative px-4 sm:px-5 py-3 text-sm font-medium transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id
+                                        ? "text-cyan-300"
+                                        : "text-white/35 hover:text-white/60"
+                                        }`}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    {tab.label}
+                                    {activeTab === tab.id && (
+                                        <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-cyan-400 to-teal-400 rounded-full" />
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 <Suspense fallback={<NeonSpinner className="h-64" />}>
@@ -118,6 +124,9 @@ export default function GraphsPage() {
                     */}
                     {activeTab === TAB_OPS && (
                         <OpsTab params={params} modelNames={modelNames} />
+                    )}
+                    {activeTab === TAB_3D && (
+                        <ThreeDTab params={params} modelNames={modelNames} />
                     )}
                 </Suspense>
             </div>
@@ -228,7 +237,7 @@ function RobustnessTab({ params, modelNames }: TabProps) {
                                 {filtered.map((d, i) => (
                                     <div key={d.llm_id} className="flex items-center gap-3 group/row">
                                         <span className="text-xs font-mono text-cyan-500/60 w-5">{i + 1}</span>
-                                        <span className="text-sm text-gray-300 w-32 truncate group-hover/row:text-white transition-colors">
+                                        <span className="text-sm text-gray-300 w-20 sm:w-32 truncate group-hover/row:text-white transition-colors">
                                             {modelNames.get(d.llm_id) ?? d.llm_id.slice(0, 8)}
                                         </span>
                                         <div className="flex-1 bg-slate-800/60 rounded-full h-2.5 overflow-hidden">
@@ -313,10 +322,10 @@ function OpsTab({ params, modelNames }: TabProps) {
                                         <span className="text-xs font-bold w-6 h-6 flex items-center justify-center rounded-md bg-gradient-to-br from-cyan-500/20 to-teal-500/20 text-cyan-400 border border-cyan-500/20">
                                             {i + 1}
                                         </span>
-                                        <span className="text-sm text-gray-300 w-36 truncate group-hover/row:text-white transition-colors">
+                                        <span className="text-sm text-gray-300 w-20 sm:w-36 truncate group-hover/row:text-white transition-colors">
                                             {modelNames.get(p.llm_id) ?? p.llm_id.slice(0, 8)}
                                         </span>
-                                        <div className="flex-1 grid grid-cols-3 gap-4 text-xs font-mono">
+                                        <div className="flex-1 grid grid-cols-3 gap-2 sm:gap-4 text-xs font-mono">
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] text-gray-600 uppercase tracking-wider">Score</span>
                                                 <span className="text-cyan-300 drop-shadow-[0_0_4px_rgba(34,211,238,0.4)]">{p.avg_score?.toFixed(2) ?? "—"}</span>
@@ -351,6 +360,34 @@ function OpsTab({ params, modelNames }: TabProps) {
                 </GlassCard>
             </div>
 
+        </div>
+    );
+}
+
+function ThreeDTab({ params, modelNames }: TabProps) {
+    const { data: paretoData } = usePareto(params);
+    const { data: trendData } = useModelsTrend(params);
+
+    return (
+        <div className="space-y-6">
+            <GlassCard expandable title="Pareto Nebula — Score × Latency × Cost">
+                <div className="min-h-[400px] h-[400px]">
+                    {paretoData?.items?.length ? (
+                        <ParetoNebula3D items={paretoData.items} modelNames={modelNames} />
+                    ) : (
+                        <NeonSpinner className="h-64" />
+                    )}
+                </div>
+            </GlassCard>
+            <GlassCard expandable title="Trend Currents — Score Over Time">
+                <div className="min-h-[400px] h-[400px]">
+                    {trendData?.series?.length ? (
+                        <TrendCurrents3D series={trendData.series} modelNames={modelNames} />
+                    ) : (
+                        <NeonSpinner className="h-64" />
+                    )}
+                </div>
+            </GlassCard>
         </div>
     );
 }

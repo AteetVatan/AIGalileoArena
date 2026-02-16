@@ -1,19 +1,25 @@
 """App settings -- all config from env vars via pydantic-settings."""
 
+from __future__ import annotations
+
 import logging
+from functools import cached_property
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+if TYPE_CHECKING:
+    from app.core.model_registry import RegisteredModel
 
 _BACKEND_ROOT = Path(__file__).parent.parent
 _ENV_FILE = _BACKEND_ROOT / ".env"
 
 
 # Debate-mode defaults (prod)
-DEFAULT_DEBATE_ENABLED_MODELS = "mistral/mistral-large-latest,deepseek/deepseek-chat"
-DEFAULT_DEBATE_DAILY_CAP = 3
+DEFAULT_DEBATE_ENABLED_PRODUCTION_MODELS = "mistral/mistral-large-latest,deepseek/deepseek-chat"
+DEFAULT_DEBATE_DAILY_PRODUCTION_CAP = 3
 DEFAULT_EVAL_SCHEDULER_CRON_DAY = 1
 DEFAULT_EVAL_SCHEDULER_CRON_HOUR = 2
 DEFAULT_EVAL_SCHEDULER_DATASETS = 6
@@ -26,6 +32,7 @@ class Settings(BaseSettings):
         env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     database_url: str = Field(
@@ -75,6 +82,41 @@ class Settings(BaseSettings):
         default=None,
         description="Grok API key from GROK_API_KEY env var",
     )
+    moonshotai_api_key: Optional[str] = Field(
+        default=None,
+        description="MoonshotAI API key from MOONSHOTAI_API_KEY env var",
+    )
+
+    # --- LLM model registry (LLM_<PROVIDER>=model_name|Label|context_window) ---
+    llm_openai: Optional[str] = Field(
+        default=None,
+        description="OpenAI model definition: model_name|Label|context_window",
+    )
+    llm_anthropic: Optional[str] = Field(
+        default=None,
+        description="Anthropic model definition: model_name|Label|context_window",
+    )
+    llm_mistral: Optional[str] = Field(
+        default=None,
+        description="Mistral model definition: model_name|Label|context_window",
+    )
+    llm_deepseek: Optional[str] = Field(
+        default=None,
+        description="DeepSeek model definition: model_name|Label|context_window",
+    )
+    llm_gemini: Optional[str] = Field(
+        default=None,
+        description="Gemini model definition: model_name|Label|context_window",
+    )
+    llm_grok: Optional[str] = Field(
+        default=None,
+        description="Grok model definition: model_name|Label",
+    )
+    llm_moonshotai: Optional[str] = Field(
+        default=None,
+        description="Moonshotai model definition: model_name|Label",
+    )
+
     log_level: str = Field(
         default="INFO",
         description="Logging level from LOG_LEVEL env var",
@@ -214,15 +256,15 @@ class Settings(BaseSettings):
     def trusted_hosts_list(self) -> list[str]:
         return [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
 
-    # --- debate mode (prod) ---
-    debate_daily_cap: int = Field(
-        default=DEFAULT_DEBATE_DAILY_CAP,
+    # --- debate mode (prod only, ignored when DEBUG=true) ---
+    debate_daily_production_cap: int = Field(
+        default=DEFAULT_DEBATE_DAILY_PRODUCTION_CAP,
         ge=1,
-        description="Max debate calls per model per calendar day (prod only)",
+        description="Max debate calls per model per calendar day (prod only, ignored in debug)",
     )
-    debate_enabled_models: str = Field(
-        default=DEFAULT_DEBATE_ENABLED_MODELS,
-        description="Comma-separated provider/model_name pairs allowed in debate mode (prod only)",
+    debate_enabled_production_models: str = Field(
+        default=DEFAULT_DEBATE_ENABLED_PRODUCTION_MODELS,
+        description="Comma-separated provider/model_name pairs allowed in production debate mode",
     )
     app_timezone: str = Field(
         default=DEFAULT_TIMEZONE,
@@ -230,8 +272,14 @@ class Settings(BaseSettings):
     )
 
     @property
-    def debate_enabled_model_keys(self) -> list[str]:
-        return [m.strip() for m in self.debate_enabled_models.split(",") if m.strip()]
+    def debate_enabled_production_model_keys(self) -> list[str]:
+        return [m.strip() for m in self.debate_enabled_production_models.split(",") if m.strip()]
+
+    @cached_property
+    def registered_models(self) -> list[RegisteredModel]:
+        """Parse LLM_* env vars into RegisteredModel list (cached)."""
+        from app.core.model_registry import build_registry_from_settings
+        return build_registry_from_settings(self)
 
     # --- monthly eval scheduler (prod) ---
     eval_scheduler_enabled: bool = Field(
@@ -268,6 +316,7 @@ class Settings(BaseSettings):
             "deepseek": self.deepseek_api_key,
             "gemini": self.gemini_api_key,
             "grok": self.grok_api_key,
+            "moonshotai": self.moonshotai_api_key,
         }
         return key_map.get(provider.lower())
 
