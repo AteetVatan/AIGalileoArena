@@ -6,6 +6,7 @@
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-teal)
 ![Next.js](https://img.shields.io/badge/Next.js-14+-black)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-galileo.masxai.com-purple)](https://galileo.masxai.com/)
 
 ---
 
