@@ -29,6 +29,9 @@ pgdata/
 # ML / ONNX models
 backend/models/
 
+# OpenClaw
+openclaw/
+
 # Misc
 *.log
 *.sql
