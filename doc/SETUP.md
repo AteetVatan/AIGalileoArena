@@ -1596,3 +1596,4 @@ The scheduler evaluates all 5 hardcoded models × N datasets × M cases. Each ev
 ### Deployment
 
 .\deploy.ps1 -BackendUrl "https://galileo-backend.up.railway.app" -SkipFrontend
+powershell -File .\deploy.ps1 -BackendUrl "https://galileo-backend.up.railway.app" -SkipFrontend
