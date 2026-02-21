@@ -85,9 +85,12 @@ async def lifespan(app: FastAPI):
                 )
                 settings.ml_scoring_enabled = False
 
-        # --- Freshness sweep scheduler (optional) ---
-        from app.infra.scheduler import start_scheduler
-        start_scheduler()
+        # --- Freshness sweep scheduler (optional, skip in serverless) ---
+        if not settings.serverless:
+            from app.infra.scheduler import start_scheduler
+            start_scheduler()
+        else:
+            logger.info("Serverless mode: scheduler disabled (no persistent process).")
 
         logger.info("Galileo Arena ready.")
     except asyncio.CancelledError:
@@ -103,8 +106,9 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         try:
-            from app.infra.scheduler import stop_scheduler
-            stop_scheduler()
+            if not settings.serverless:
+                from app.infra.scheduler import stop_scheduler
+                stop_scheduler()
             logger.info("Shutting down.")
         except asyncio.CancelledError:
             logger.debug("Shutdown cancelled (likely due to hot reload)")

@@ -247,6 +247,11 @@ class Settings(BaseSettings):
         default=4, ge=1, le=16,
         description="Uvicorn worker count for production (UVICORN_WORKERS env var)",
     )
+    serverless: bool = Field(
+        default=False,
+        description="Enable serverless mode: NullPool, no scheduler, 1 worker. "
+                    "Set SERVERLESS=true on Railway for scale-to-zero.",
+    )
 
     @property
     def allowed_origins_list(self) -> list[str]:

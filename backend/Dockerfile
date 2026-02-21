@@ -13,4 +13,10 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE ${PORT:-8000}
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${UVICORN_WORKERS:-4}"]
+CMD ["sh", "-c", "\
+  if [ \"$SERVERLESS\" = 'true' ] || [ \"$SERVERLESS\" = 'True' ] || [ \"$SERVERLESS\" = '1' ]; then \
+    WORKERS=1; \
+  else \
+    WORKERS=${UVICORN_WORKERS:-4}; \
+  fi && \
+  uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers $WORKERS"]
